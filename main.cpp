@@ -1,13 +1,38 @@
-#include <QtCore/QCoreApplication>
-#include <QDBusConnection>
-#include <QTimer>
-#include "qconnman.h"
+//#include <QtCore/QCoreApplication>
+//#include <QDBusConnection>
+//#include <QTimer>
+//#include "qconnman.h"
+//
+//int main(int argc, char *argv[])
+//{
+//    QCoreApplication a(argc, argv);
+//    QConnman qcon;
+//    QTimer::singleShot(0, &qcon, SLOT(getInfo()));
+//    QObject::connect(&qcon, SIGNAL(done()), &a, SLOT(quit()));
+//    return a.exec();
+//}
+//
+//****************************************************************************/
+
+#include <QtGui/QtGui>
+
+#include "window.h"
 
 int main(int argc, char *argv[])
 {
-    QCoreApplication a(argc, argv);
-    QConnman qcon;
-    QTimer::singleShot(0, &qcon, SLOT(getInfo()));
-    QObject::connect(&qcon, SIGNAL(done()), &a, SLOT(quit()));
-    return a.exec();
+    Q_INIT_RESOURCE(systray);
+
+    QApplication app(argc, argv);
+
+    if (!QSystemTrayIcon::isSystemTrayAvailable()) {
+        QMessageBox::critical(0, QObject::tr("Systray"),
+                              QObject::tr("I couldn't detect any system tray "
+                                          "on this system."));
+        return 1;
+    }
+    QApplication::setQuitOnLastWindowClosed(false);
+
+    Window window;
+    //window.show();
+    return app.exec();
 }

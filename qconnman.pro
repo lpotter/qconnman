@@ -10,6 +10,12 @@ CONFIG -= app_bundle
 TEMPLATE = app
 SOURCES += main.cpp \
     qconnmanservice_linux.cpp \
-    qconnman.cpp
+    qconnman.cpp \
+window.cpp
 HEADERS += qconnmanservice_linux_p.h \
-    qconnman.h
+    qconnman.h \
+window.h
+RESOURCES     = systray.qrc
+
+QT           += xml svg
+
