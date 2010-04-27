@@ -15,7 +15,6 @@
 //****************************************************************************/
 
 #include <QtGui/QtGui>
-
 #include "window.h"
 
 int main(int argc, char *argv[])

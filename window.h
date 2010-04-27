@@ -44,6 +44,9 @@
 
 #include <QtGui/QSystemTrayIcon>
 #include <QtGui/QDialog>
+#include "qconnmanservice_linux_p.h"
+
+#include "ui_trayapp.h"
 
 QT_BEGIN_NAMESPACE
 class QAction;
@@ -51,6 +54,7 @@ class QLabel;
 class QMenu;
 QT_END_NAMESPACE
 
+class QMenu;
 class Window : public QSystemTrayIcon
 {
     Q_OBJECT
@@ -65,24 +69,36 @@ protected:
     void closeEvent(QCloseEvent *event);
 
 private slots:
-  //  void setIcon(int index);
     void iconActivated(QSystemTrayIcon::ActivationReason reason);
-  //  void showMessage();
     void messageClicked();
+    void showWifi();
+    void menuTriggered(QAction *action);
+
+    void connManPropertyChanged(const QString &str, const QDBusVariant &var);
+    void techPropertyChanged(const QString &str, const QDBusVariant &var);
+
+    void itemClicked(QTreeWidgetItem*,int);
+    void subItemClicked(QTreeWidgetItem*,int);
+
+    void updateTree();
+    void networkPropertyChanged(const QString &, const QDBusVariant &value);
 
 private:
     void createActions();
     void createTrayIcon();
+    void doTrigger();
 
-//    QLabel *iconLabel;
-//
-//    QAction *minimizeAction;
-//    QAction *maximizeAction;
-//    QAction *restoreAction;
+    QConnmanInterface *connman;
+    QList<QConnmanTechnologyInterface *> connmanTech;
+    QList<QConnmanServiceInterface *> connmanServices;
+
     QAction *quitAction;
-//
-//    QSystemTrayIcon *trayIcon;
+    QAction *wifiAction;
+
     QMenu *trayIconMenu;
+    QWidget *trayWidget;
+    Ui_TrayApp *mw;
+
 };
 
 #endif

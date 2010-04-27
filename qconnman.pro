@@ -1,12 +1,9 @@
 # -------------------------------------------------
 # Project created by QtCreator 2010-04-01T04:36:37
 # -------------------------------------------------
-QT += core \
-    dbus
-QT -= gui
+QT += core dbus gui
 TARGET = qconnman
 CONFIG += console
-CONFIG -= app_bundle
 TEMPLATE = app
 SOURCES += main.cpp \
     qconnmanservice_linux.cpp \
@@ -14,8 +11,9 @@ SOURCES += main.cpp \
 window.cpp
 HEADERS += qconnmanservice_linux_p.h \
     qconnman.h \
-window.h
-RESOURCES     = systray.qrc
+    window.h
+RESOURCES = systray.qrc
+QT += xml svg
 
-QT           += xml svg
-
+FORMS += \
+    trayapp.ui
