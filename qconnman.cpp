@@ -14,8 +14,8 @@ void QConnman::getInfo()
         emit done();
         return;
     }
-    connect(connman, SIGNAL(stateChanged(QString)), this,SLOT(stateChanged(QString)));
-    connect(connman,SIGNAL(propertyChanged(QString,QVariant&)), this,SLOT(propertyChanged(QString,QVariant&)));
+    connect(connman, SIGNAL(stateChanged(QString)),this,SLOT(stateChanged(QString)));
+    connect(connman,SIGNAL(propertyChanged(QString,QVariant&)),this,SLOT(propertyChanged(QString,QVariant&)));
 
     qWarning() << "State" << connman->getState();
     qWarning() << "available technologies" << connman->getAvailableTechnologies();

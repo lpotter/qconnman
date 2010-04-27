@@ -137,7 +137,7 @@ public:
      QDBusObjectPath path() const;
 
     QConnmanMap getProperties();
-    bool setProperty(const QString &name, QVariant value);
+    bool setProperty(const QString &name, const QDBusVariant &value);
     QDBusObjectPath createProfile(const QString &name);
     bool removeProfile(QDBusObjectPath path);
     bool requestScan(const QString &type);
@@ -168,7 +168,7 @@ public:
 
 
 Q_SIGNALS:
-    void propertyChanged(const QString &, QVariant value);
+    void propertyChanged(const QString &, const QDBusVariant &value);
     void stateChanged(const QString &);
 
 private Q_SLOTS:
@@ -205,7 +205,7 @@ public:
     QString getWifiPassphrase();
 
 Q_SIGNALS:
-    void propertyChanged(const QString &, QVariant &value);
+    void propertyChanged(const QString &, const QDBusVariant &value);
 private:
     //QConnmanNetworkInterfacePrivate *d;
 protected:
@@ -231,7 +231,7 @@ public:
     QStringList getServices();
 
 Q_SIGNALS:
-    void propertyChanged(const QString &, QVariant &value);
+    void propertyChanged(const QString &, const QDBusVariant &value);
 private:
     QConnmanProfileInterfacePrivate *d;
 
@@ -288,7 +288,7 @@ public:
     QStringList getServices();
 
 Q_SIGNALS:
-    void propertyChanged(const QString &, QVariant &value);
+    void propertyChanged(const QString &, const QDBusVariant &value);
 
 private:
 //    QConnmanServiceInterfacePrivate *d;
@@ -316,7 +316,7 @@ public:
     QStringList getDevices();
 
 Q_SIGNALS:
-    void propertyChanged(const QString &, QVariant &value);
+    void propertyChanged(const QString &, const QDBusVariant &value);
 private:
 protected:
     void connectNotify(const char *signal);
@@ -380,14 +380,16 @@ public:
     quint16 getScanInterval();
     bool isScanning();
     QStringList getNetworks();
+    bool setEnabled(bool powered);
 
 Q_SIGNALS:
-    void propertyChanged(const QString &, QVariant &value);
+    void propertyChanged(const QString &, const QDBusVariant &value);
 private:
 protected:
     void connectNotify(const char *signal);
     void disconnectNotify(const char *signal);
     QVariant getProperty(const QString &);
+
 };
 
 
