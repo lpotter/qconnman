@@ -81,16 +81,19 @@ private slots:
     void subItemClicked(QTreeWidgetItem*,int);
 
     void updateTree();
-    void networkPropertyChanged(const QString &, const QDBusVariant &value);
+    void networkPropertyChanged(const QString &, const QDBusVariant &);
+    void servicesPropertyChanged(const QString &, const QDBusVariant &);
+    void connmanStateChanged(const QString &);
 
 private:
     void createActions();
     void createTrayIcon();
     void doTrigger();
 
-    QConnmanInterface *connman;
+    QConnmanManagerInterface *connman;
     QList<QConnmanTechnologyInterface *> connmanTech;
     QList<QConnmanServiceInterface *> connmanServices;
+    QConnmanServiceInterface *wifiService;
 
     QAction *quitAction;
     QAction *wifiAction;

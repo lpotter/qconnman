@@ -8,7 +8,7 @@ QConnman::QConnman(QObject *parent) :
 
 void QConnman::getInfo()
 {
-    QConnmanInterface *connman = new QConnmanInterface();
+    QConnmanManagerInterface *connman = new QConnmanManagerInterface();
     if(!connman->isValid()) {
         qWarning() << connman->lastError().message();
         emit done();
@@ -67,12 +67,12 @@ void QConnman::getInfo()
 
 void QConnman::stateChanged(const QString &state)
 {
-    qWarning() << Q_FUNC_INFO;
+    qWarning() << Q_FUNC_INFO << state;
 }
 
 
 void QConnman::propertyChanged(const QString &property, QVariant &var)
 {
-    qWarning() << Q_FUNC_INFO;
+    qWarning() << Q_FUNC_INFO << property << var;
 
 }

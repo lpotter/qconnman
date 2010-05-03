@@ -48,17 +48,23 @@
 
 //#include "qconnman.h"
 #include "qconnmanservice_linux_p.h"
+
 #include "ui_trayapp.h"
+#include "ui_wizard.h"
 
 
 Window::Window()
 {
-    connman = new QConnmanInterface(this);
-    connect(connman,SIGNAL(propertyChanged(const QString &,const QDBusVariant&)),this,SLOT(connManPropertyChanged(const QString &,const QDBusVariant&)));
+    connman = new QConnmanManagerInterface(this);
+    connect(connman,SIGNAL(propertyChanged(const QString &,const QDBusVariant&)),
+            this,SLOT(connManPropertyChanged(const QString &,const QDBusVariant&)));
 
-trayWidget = new QWidget;
+    connect(connman,SIGNAL(stateChanged(const QString &)),
+            this,SLOT(connmanStateChanged(const QString &)));
+
+    trayWidget = new QWidget;
     mw = new Ui_TrayApp;
-     mw->setupUi(trayWidget);
+    mw->setupUi(trayWidget);
     // mw->treeWidget->resizeColumnToContents(1);
 //     mw->treeWidget->header()->setHidden(true);
 //     mw->treeWidget->setAlternatingRowColors(true);
@@ -118,7 +124,7 @@ void Window::createActions()
     if(!connman->isValid()) {
         qWarning() << "not valid";
     } else {
-updateTree();
+        updateTree();
 }
     connect(mw->treeWidget,SIGNAL(itemDoubleClicked(QTreeWidgetItem*,int)),
             this,SLOT(itemClicked(QTreeWidgetItem*,int)));
@@ -136,7 +142,7 @@ void Window::createTrayIcon()
 
 void Window::itemClicked(QTreeWidgetItem* item,int)
 {
-    qWarning() << item->text(0) << item->text(1);
+    qWarning() << item->text(0) << item->text(1) << item->childCount();
     if(item->childCount() < 1) {
         if(item->text(1) == "available") {
             QConnmanTechnologyInterface tech(connman->getPathForTechnology(item->text(0)));
@@ -198,15 +204,59 @@ void Window::itemClicked(QTreeWidgetItem* item,int)
 
 
             }
+        } else if(item->text(1) == "Connected") {
+            qWarning() << "lets disconnect";
+            foreach(QString servicepath, connman->getServices()) {
+                QConnmanServiceInterface serv(servicepath,this);
+                if(serv.getName() == item->text(0)) {
+                    qWarning() << serv.getName() << item->text(0);
+                    serv.disconnect();
+                    break;
+                }
+            }
         } else {
 
-            qWarning() << "have a child";
+            //            qWarning() << "Services" << connman->getServices();
+            foreach(QString servicepath, connman->getServices()) {
+                QConnmanServiceInterface serv(servicepath,this);
+                if(serv.getName() == item->text(0)) {
+                    qWarning() << serv.getName() << serv.getType()
+                            << serv.getSignalStrength()
+                            << "\npassphrase required:" << serv.isPassphraseRequired()
+                            << "\nsetup required:" << serv.isSetupRequired();
+                    serv.connect();
+                    if(serv.isPassphraseRequired()) {
+                        QWizard *wid = new QWizard();
+                        Ui_Wizard *wiz = new Ui_Wizard();
+                        wiz->setupUi(wid);
+                        int result = wid->exec();
+                        if(result == QDialog::Accepted) {
+                            qWarning() << wiz->passphraseLineEdit->text();
+                            QVariantMap map;// = new QVariantMap();
+                            map.insert("Type", "wifi");
+                            map.insert("Mode", "managed");
+                            map.insert("SSID", serv.getName());
+                            map.insert("Security", serv.getSecurity());
+                            map.insert("Passphrase",wiz->passphraseLineEdit->text());
+                            QDBusObjectPath path = connman->connectService(map);
+                            qWarning() << path.path();
 
+                            connmanServices.append(&serv);
+                            connect(connmanServices.at(connmanServices.count()-1),SIGNAL(propertyChanged(QString,QDBusVariant)),
+                            this,SLOT(servicesPropertyChanged(QString,QDBusVariant)));
+
+                           // delete map;
+                        }
+                        delete wiz;
+                        delete wid;
+                    }
+                }
+            }
         }
     }
 }
 
-void Window::subItemClicked(QTreeWidgetItem* item,int)
+void Window::subItemClicked(QTreeWidgetItem* /*item*/,int)
 {
 
 }
@@ -258,10 +308,21 @@ void Window::doTrigger()
 void Window::connManPropertyChanged(const QString &str, const QDBusVariant &var)
 {
     qWarning() << __FUNCTION__ << str << var.variant()
-            << "Technologies" << connman->getAvailableTechnologies()
-            ;
+//            << "Technologies" << connman->getAvailableTechnologies()
+            << connman->getState();
+
+//    QDBusArgument arg = var.variant();
+    //QDBusReply<QDBusArgument> reply = var;
+
+//    qWarning() << reply;
     updateTree();
 }
+
+void Window::connmanStateChanged(const QString &state)
+{
+    qWarning() << __FUNCTION__ << state;
+}
+
 
 void Window::techPropertyChanged(const QString &str, const QDBusVariant &var)
 {
@@ -302,3 +363,7 @@ void Window::networkPropertyChanged(const QString &item, const QDBusVariant &val
 qWarning() << __FUNCTION__ << item << value.variant();
 }
 
+void Window::servicesPropertyChanged(const QString &item, const QDBusVariant &value)
+{
+    qWarning() << __FUNCTION__ << item << value.variant();
+}
