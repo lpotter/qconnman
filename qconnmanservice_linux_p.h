@@ -113,37 +113,36 @@ enum connman_device_mode {
 
 QT_BEGIN_NAMESPACE
 
-typedef QMap< QString, QVariant > QConnmanMap;
 typedef QMap<QString,QString>  QConnmanStringMap;
 
 QT_END_NAMESPACE
 
-Q_DECLARE_METATYPE(QT_PREPEND_NAMESPACE(QConnmanMap))
+Q_DECLARE_METATYPE(QT_PREPEND_NAMESPACE(QVariantMap))
 Q_DECLARE_METATYPE(QT_PREPEND_NAMESPACE(QConnmanStringMap))
 
 
 QT_BEGIN_NAMESPACE
 //QDBusAbstractInterface
 
-class QConnmanInterface : public  QDBusAbstractInterface
+class QConnmanManagerInterface : public  QDBusAbstractInterface
 {
     Q_OBJECT
 
 public:
 
-    QConnmanInterface( QObject *parent = 0);
-    ~QConnmanInterface();
+    QConnmanManagerInterface( QObject *parent = 0);
+    ~QConnmanManagerInterface();
 
      QDBusObjectPath path() const;
 
-    QConnmanMap getProperties();
+    QVariantMap getProperties();
     bool setProperty(const QString &name, const QDBusVariant &value);
     QDBusObjectPath createProfile(const QString &name);
     bool removeProfile(QDBusObjectPath path);
     bool requestScan(const QString &type);
     bool enableTechnology(const QString &type);
     bool disableTechnology(const QString &type);
-    QDBusObjectPath connectService(QConnmanMap &map);
+    QDBusObjectPath connectService(QVariantMap &map);
     void registerAgent(QDBusObjectPath &path);
     void unregisterAgent(QDBusObjectPath path);
     void registerCounter(QDBusObjectPath path, quint32 interval);
@@ -173,7 +172,7 @@ Q_SIGNALS:
 
 private Q_SLOTS:
 private:
-    //QConnmanInterfacePrivate *d;
+    //QConnmanManagerInterfacePrivate *d;
 //    QNmDBusHelper *nmDBusHelper;
 
 protected:
@@ -192,7 +191,7 @@ public:
     QConnmanNetworkInterface(const QString &dbusPathName, QObject *parent = 0);
     ~QConnmanNetworkInterface();
 
-    QConnmanMap getProperties();
+    QVariantMap getProperties();
 
     //properties
     QString getName();
@@ -224,7 +223,7 @@ public:
     QConnmanProfileInterface(const QString &dbusPathName,QObject *parent = 0);
     ~QConnmanProfileInterface();
 
-    QConnmanMap getProperties();
+    QVariantMap getProperties();
 // properties
     QString getName();
     bool isOfflineMode();
@@ -250,8 +249,8 @@ public:
     QConnmanServiceInterface(const QString &dbusPathName,QObject *parent = 0);
     ~QConnmanServiceInterface();
 
-    QConnmanMap getProperties();
-      // setProperty
+    QVariantMap getProperties();
+    bool setProperty(const QString &name, const QDBusVariant &value);
       // clearProperty
     void connect();
     void disconnect();
@@ -307,7 +306,7 @@ public:
     QConnmanTechnologyInterface(const QString &dbusPathName,QObject *parent = 0);
     ~QConnmanTechnologyInterface();
 
-    QConnmanMap getProperties();
+    QVariantMap getProperties();
 // properties
     QString getState();
     QString getName();
@@ -369,7 +368,7 @@ public:
     QConnmanDeviceInterface(const QString &dbusPathName,QObject *parent = 0);
     ~QConnmanDeviceInterface();
 
-    QConnmanMap getProperties();
+    QVariantMap getProperties();
 
 //properties
     QString getAddress();
