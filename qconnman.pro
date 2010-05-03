@@ -16,4 +16,5 @@ RESOURCES = systray.qrc
 QT += xml svg
 
 FORMS += \
-    trayapp.ui
+    trayapp.ui \
+    wizard.ui
