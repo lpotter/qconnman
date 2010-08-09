@@ -45,8 +45,10 @@
 #include <QtGui/QSystemTrayIcon>
 #include <QtGui/QDialog>
 #include "qconnmanservice_linux_p.h"
+#include "qofonoservice_linux_p.h"
 
-#include "ui_trayapp.h"
+#include "ui_form.h"
+//#include "ui_trayapp.h"
 
 QT_BEGIN_NAMESPACE
 class QAction;
@@ -75,15 +77,47 @@ private slots:
     void menuTriggered(QAction *action);
 
     void connManPropertyChanged(const QString &str, const QDBusVariant &var);
+    void connmanPropertyChangedContext(const QString &,const QString &, const QDBusVariant &);
+
     void techPropertyChanged(const QString &str, const QDBusVariant &var);
 
     void itemClicked(QTreeWidgetItem*,int);
     void subItemClicked(QTreeWidgetItem*,int);
 
     void updateTree();
+
     void networkPropertyChanged(const QString &, const QDBusVariant &);
+    void networkPropertyChangedContext(const QString &,const QString &, const QDBusVariant &);
+
     void servicesPropertyChanged(const QString &, const QDBusVariant &);
+    void servicesPropertyChangedContext(const QString &,const QString &, const QDBusVariant &);
+
+    void technologyPropertyChanged(const QString &, const QDBusVariant &);
+    void technologyPropertyChangedContext(const QString &,const QString &, const QDBusVariant &);
+
     void connmanStateChanged(const QString &);
+
+
+    void ofonoPropertyChangedContext(const QString &path,const QString &item, const QDBusVariant &value);
+    void ofonoNetworkPropertyChangedContext(const QString &path,const QString &item, const QDBusVariant &value);
+    void ofonoModemPropertyChangedContext(const QString &path,const QString &item, const QDBusVariant &value);
+
+    void immediateMessage(const QString &msg,const QVariantMap &map);
+    void incomingMessage(const QString &msg,const QVariantMap &map);
+
+    void cellItemClicked(QTreeWidgetItem*,int);
+    void sendMessage();
+
+
+    void contextMenu(const QPoint &);
+    void appletContextMenu(const QPoint &);
+
+    void deviceContextMenuClicked();
+
+    void connectService();
+    void disconnectService();
+    void removeService();
+    void scan();
 
 private:
     void createActions();
@@ -93,6 +127,8 @@ private:
     QConnmanManagerInterface *connman;
     QList<QConnmanTechnologyInterface *> connmanTech;
     QList<QConnmanServiceInterface *> connmanServices;
+    QList<QConnmanNetworkInterface *> connmanNetworks;
+
     QConnmanServiceInterface *wifiService;
 
     QAction *quitAction;
@@ -100,8 +136,37 @@ private:
 
     QMenu *trayIconMenu;
     QWidget *trayWidget;
-    Ui_TrayApp *mw;
+    Ui_qconnmanApp *mw;
+    void connectToService(const QString &service);
+    QString getServiceForNetwork(const QString &netPath);
 
+    QStringList knownModems;
+    QOfonoManagerInterface *ofonoManager;
+
+};
+
+class QConnectThread : public QThread
+{
+    Q_OBJECT
+
+public:
+    QConnectThread(QObject *parent = 0);
+    ~QConnectThread();
+    bool keepRunning;
+    void quit();
+    QString service;
+
+Q_SIGNALS:
+    void connected(const QString &path);
+    void disconnected();
+
+protected:
+    void run();
+
+private:
+    QMutex mutex;
+
+private Q_SLOTS:
 };
 
 #endif

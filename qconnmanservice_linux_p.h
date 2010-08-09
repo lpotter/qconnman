@@ -65,11 +65,6 @@
 #include <QtDBus/QDBusContext>
 #include <QMap>
 
-//#include "qnmdbushelper.h"
-
-#include <connman/dbus.h>
-#include <connman/device.h>
-
 #ifndef __CONNMAN_DBUS_H
 
 #define	CONNMAN_SERVICE     "org.moblin.connman"
@@ -92,37 +87,12 @@
 #define CONNMAN_TECHNOLOGY_INTERFACE	CONNMAN_SERVICE ".Technology"
 #endif
 
-#ifndef __CONNMAN_DEVICE_H
-enum connman_device_type {
-	CONNMAN_DEVICE_TYPE_UNKNOWN   = 0,
-	CONNMAN_DEVICE_TYPE_ETHERNET  = 1,
-	CONNMAN_DEVICE_TYPE_WIFI      = 2,
-	CONNMAN_DEVICE_TYPE_WIMAX     = 3,
-	CONNMAN_DEVICE_TYPE_BLUETOOTH = 4,
-	CONNMAN_DEVICE_TYPE_CELLULAR  = 5,
-	CONNMAN_DEVICE_TYPE_GPS       = 6,
-	CONNMAN_DEVICE_TYPE_VENDOR    = 10000,
-} connamn_device;
-
-enum connman_device_mode {
-	CONNMAN_DEVICE_MODE_UNKNOWN          = 0,
-	CONNMAN_DEVICE_MODE_NETWORK_SINGLE   = 1,
-	CONNMAN_DEVICE_MODE_NETWORK_MULTIPLE = 2,
-};
-#endif
-
 QT_BEGIN_NAMESPACE
-
-typedef QMap<QString,QString>  QConnmanStringMap;
 
 QT_END_NAMESPACE
 
-Q_DECLARE_METATYPE(QT_PREPEND_NAMESPACE(QVariantMap))
-Q_DECLARE_METATYPE(QT_PREPEND_NAMESPACE(QConnmanStringMap))
-
 
 QT_BEGIN_NAMESPACE
-//QDBusAbstractInterface
 
 class QConnmanManagerInterface : public  QDBusAbstractInterface
 {
@@ -162,6 +132,7 @@ public:
     QStringList getProfiles();
     QStringList  getTechnologies();
     QStringList getServices();
+    QDBusObjectPath lookupService(const QString &);
 
     QString getPathForTechnology(const QString &tech);
 
@@ -169,11 +140,7 @@ public:
 Q_SIGNALS:
     void propertyChanged(const QString &, const QDBusVariant &value);
     void stateChanged(const QString &);
-
-private Q_SLOTS:
-private:
-    //QConnmanManagerInterfacePrivate *d;
-//    QNmDBusHelper *nmDBusHelper;
+    void propertyChangedContext(const QString &,const QString &,const QDBusVariant &);
 
 protected:
     void connectNotify(const char *signal);
@@ -194,6 +161,7 @@ public:
     QVariantMap getProperties();
 
     //properties
+    QString getAddress();
     QString getName();
     bool isConnected();
     quint8 getSignalStrength();
@@ -205,8 +173,7 @@ public:
 
 Q_SIGNALS:
     void propertyChanged(const QString &, const QDBusVariant &value);
-private:
-    //QConnmanNetworkInterfacePrivate *d;
+    void propertyChangedContext(const QString &,const QString &,const QDBusVariant &);
 protected:
     void connectNotify(const char *signal);
     void disconnectNotify(const char *signal);
@@ -250,7 +217,6 @@ public:
     ~QConnmanServiceInterface();
 
     QVariantMap getProperties();
-    bool setProperty(const QString &name, const QDBusVariant &value);
       // clearProperty
     void connect();
     void disconnect();
@@ -278,19 +244,18 @@ public:
     bool isRoaming();
     QStringList getNameservers();
     QStringList getDomains();
-    QConnmanStringMap getIPv4();
-    QConnmanStringMap getIPv4Configuration();
-    QConnmanStringMap getProxy();
-    QConnmanStringMap getEthernet();
+    QVariantMap getIPv4();
+    QVariantMap getIPv4Configuration();
+    QVariantMap getProxy();
+    QVariantMap getEthernet();
 
     bool isOfflineMode();
     QStringList getServices();
 
 Q_SIGNALS:
     void propertyChanged(const QString &, const QDBusVariant &value);
+    void propertyChangedContext(const QString &,const QString &,const QDBusVariant &);
 
-private:
-//    QConnmanServiceInterfacePrivate *d;
 protected:
     void connectNotify(const char *signal);
     void disconnectNotify(const char *signal);
@@ -316,7 +281,7 @@ public:
 
 Q_SIGNALS:
     void propertyChanged(const QString &, const QDBusVariant &value);
-private:
+    void propertyChangedContext(const QString &,const QString &,const QDBusVariant &);
 protected:
     void connectNotify(const char *signal);
     void disconnectNotify(const char *signal);
@@ -337,8 +302,6 @@ public:
     void reportError(QDBusObjectPath &path, const QString &error);
 //    dict requestInput(QDBusObjectPath &path, dict fields);
     void cancel();
-private:
-  //  QConnmanAgentInterfacePrivate *d;
 protected:
     void connectNotify(const char *signal);
     void disconnectNotify(const char *signal);
@@ -369,6 +332,7 @@ public:
     ~QConnmanDeviceInterface();
 
     QVariantMap getProperties();
+    void scan();
 
 //properties
     QString getAddress();
@@ -377,13 +341,16 @@ public:
     QString getInterface();
     bool isPowered();
     quint16 getScanInterval();
+    bool setScanInterval(const QString &interval);
+
     bool isScanning();
     QStringList getNetworks();
     bool setEnabled(bool powered);
+    bool setProperty(const QString &name, const QDBusVariant &value);
 
 Q_SIGNALS:
     void propertyChanged(const QString &, const QDBusVariant &value);
-private:
+    void propertyChangedContext(const QString &,const QString &,const QDBusVariant &);
 protected:
     void connectNotify(const char *signal);
     void disconnectNotify(const char *signal);
@@ -391,6 +358,19 @@ protected:
 
 };
 
+class QConnmanDBusHelper: public QObject, protected QDBusContext
+ {
+     Q_OBJECT
+ public:
+    QConnmanDBusHelper(QObject *parent = 0);
+    ~QConnmanDBusHelper();
+
+ public slots:
+    void propertyChanged(const QString &, const QDBusVariant &);
+
+Q_SIGNALS:
+    void propertyChangedContext(const QString &,const QString &,const QDBusVariant &);
+};
 
 QT_END_NAMESPACE
 
