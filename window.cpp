@@ -328,34 +328,36 @@ void Window::updateTree()
 
             Q_FOREACH(QDBusObjectPath path, ofonoManager->getModems()) {
 //                initModem(path.path());
-                QOfonoModemInterface *modemIface;
-                modemIface = new QOfonoModemInterface(path.path(),this);
-                knownModems << path.path();
+                if(!knownModems.contains(path.path())) {
+                    QOfonoModemInterface *modemIface;
+                    modemIface = new QOfonoModemInterface(path.path(),this);
+                    knownModems << path.path();
 
-                connect(modemIface,SIGNAL(propertyChangedContext(QString,QString,QDBusVariant)),
-                        this,SLOT(ofonoModemPropertyChangedContext(QString,QString,QDBusVariant)));
+                    connect(modemIface,SIGNAL(propertyChangedContext(QString,QString,QDBusVariant)),
+                            this,SLOT(ofonoModemPropertyChangedContext(QString,QString,QDBusVariant)));
 
-                QOfonoNetworkInterface *ofonoNetworkInterface;
-                ofonoNetworkInterface = new QOfonoNetworkInterface(path.path(),this);
-                connect(ofonoNetworkInterface,SIGNAL(propertyChangedContext(QString,QString,QDBusVariant)),
-                        this,SLOT(ofonoNetworkPropertyChangedContext(QString,QString,QDBusVariant)));
+                    QOfonoNetworkInterface *ofonoNetworkInterface;
+                    ofonoNetworkInterface = new QOfonoNetworkInterface(path.path(),this);
+                    connect(ofonoNetworkInterface,SIGNAL(propertyChangedContext(QString,QString,QDBusVariant)),
+                            this,SLOT(ofonoNetworkPropertyChangedContext(QString,QString,QDBusVariant)));
 
-                QTreeWidgetItem *netItem;
-                netItem = new QTreeWidgetItem(QStringList()
-                                              << ofonoNetworkInterface->getOperatorName()
-                                              << ofonoNetworkInterface->getStatus());
-                mw->cellTreeWidget->addTopLevelItem(netItem);
-                netItem->setExpanded(true);
+                    QTreeWidgetItem *netItem;
+                    netItem = new QTreeWidgetItem(QStringList()
+                                                  << ofonoNetworkInterface->getOperatorName()
+                                                  << ofonoNetworkInterface->getStatus());
+                    mw->cellTreeWidget->addTopLevelItem(netItem);
+                    netItem->setExpanded(true);
 
-                QOfonoSmsInterface *smsIface;
-                smsIface = new QOfonoSmsInterface(path.path(), this);
+                    QOfonoSmsInterface *smsIface;
+                    smsIface = new QOfonoSmsInterface(path.path(), this);
 
-                connect(smsIface,SIGNAL(immediateMessage(QString, QVariantMap)),
-                        this,SLOT(immediateMessage(QString,QVariantMap)));
+                    connect(smsIface,SIGNAL(immediateMessage(QString, QVariantMap)),
+                            this,SLOT(immediateMessage(QString,QVariantMap)));
 
-                connect(smsIface,SIGNAL(incomingMessage(QString, QVariantMap)),
-                        this,SLOT(incomingMessage(QString,QVariantMap)));
-                netItem->setData(0,Qt::UserRole,QVariant(path.path()));
+                    connect(smsIface,SIGNAL(incomingMessage(QString, QVariantMap)),
+                            this,SLOT(incomingMessage(QString,QVariantMap)));
+                    netItem->setData(0,Qt::UserRole,QVariant(path.path()));
+                }
             }
         }
     }
