@@ -336,8 +336,8 @@ void Window::updateTree()
                     connect(modemIface,SIGNAL(propertyChangedContext(QString,QString,QDBusVariant)),
                             this,SLOT(ofonoModemPropertyChangedContext(QString,QString,QDBusVariant)));
 
-                    QOfonoNetworkInterface *ofonoNetworkInterface;
-                    ofonoNetworkInterface = new QOfonoNetworkInterface(path.path(),this);
+                    QOfonoNetworkRegistrationInterface *ofonoNetworkInterface;
+                    ofonoNetworkInterface = new QOfonoNetworkRegistrationInterface(path.path(),this);
                     connect(ofonoNetworkInterface,SIGNAL(propertyChangedContext(QString,QString,QDBusVariant)),
                             this,SLOT(ofonoNetworkPropertyChangedContext(QString,QString,QDBusVariant)));
 
