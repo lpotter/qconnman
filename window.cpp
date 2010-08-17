@@ -580,10 +580,12 @@ void  Window::appletContextMenu(const QPoint &/*point*/)
 //    CloudView view(conncloud);
 //    view.show();
 
-
     QMenu menu;
     QAction *action;
+
     foreach(QString technology,connman->getTechnologies()) {
+        qDebug() <<__FUNCTION__<< technology;
+
         QConnmanTechnologyInterface *tech;
         tech = new QConnmanTechnologyInterface(connman->getPathForTechnology(technology),this);
         bool on = false;
@@ -604,8 +606,33 @@ void  Window::appletContextMenu(const QPoint &/*point*/)
         connect(action,SIGNAL(triggered()),this,SLOT(deviceContextMenuClicked()));
         menu.addAction(action);
         menu.addSeparator();
-
     }
+
+    Q_FOREACH(QDBusObjectPath path, ofonoManager->getModems()) {
+        qDebug() << path.path();
+        QOfonoModemInterface modemIface(path.path(),this);
+        qDebug() << modemIface.getName() << modemIface.isPowered();
+        QString str = modemIface.getName();
+        if(str.isEmpty()) {
+            str = modemIface.getManufacturer() +" "+modemIface.getModel();
+        }
+        QString textItem = str +": "+(modemIface.isPowered() ? "On":"Off");
+
+        action = new QAction(textItem,this);
+        action->setDisabled(true);
+        menu.addAction(action);
+
+        if(modemIface.isPowered()) {
+            action = new QAction(QString("Disable "+str),this);
+        } else {
+            action = new QAction(QString("Enable "+str),this);
+        }
+        connect(action,SIGNAL(triggered()),this,SLOT(deviceContextMenuClicked()));
+        menu.addAction(action);
+        menu.addSeparator();
+    }
+
+
     action = new QAction("Quit", this);
     connect(action,SIGNAL(triggered()),qApp,SLOT(quit()));
     menu.addAction(action);
@@ -697,8 +724,10 @@ void Window::deviceContextMenuClicked()
         // enable tech
    //     qWarning() << action->text().split(" ").at(1);
     }
-
+qDebug() << Q_FUNC_INFO;
     foreach(QString technology,connman->getTechnologies()) {
+        qDebug() << technology;
+
         QConnmanTechnologyInterface tech(connman->getPathForTechnology(technology),this);
         QConnmanDeviceInterface device(tech.getDevices().at(0));
         if(action->text().split(" ").at(1) == tech.getName()) {

@@ -187,6 +187,33 @@ QString QOfonoModemInterface::getName()
     return qdbus_cast<QString>(var);
 }
 
+QString QOfonoModemInterface::getManufacturer()
+{
+    QVariant var = getProperty("Manufacturer");
+    return qdbus_cast<QString>(var);
+
+}
+
+QString QOfonoModemInterface::getModel()
+{
+
+    QVariant var = getProperty("Model");
+    return qdbus_cast<QString>(var);
+}
+
+QString QOfonoModemInterface::getRevision()
+{
+    QVariant var = getProperty("Revision");
+    return qdbus_cast<QString>(var);
+
+}
+QString QOfonoModemInterface::getSerial()
+{
+    QVariant var = getProperty("Serial");
+    return qdbus_cast<QString>(var);
+
+}
+
 QStringList QOfonoModemInterface::getFeatures()
 {
     //sms, sim
