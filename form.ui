@@ -138,6 +138,21 @@
            <string>State</string>
           </property>
          </column>
+         <column>
+          <property name="text">
+           <string>APN</string>
+          </property>
+         </column>
+         <column>
+          <property name="text">
+           <string>Powered</string>
+          </property>
+         </column>
+         <column>
+          <property name="text">
+           <string>Active</string>
+          </property>
+         </column>
         </widget>
        </item>
       </layout>

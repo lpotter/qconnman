@@ -347,6 +347,24 @@ void Window::updateTree()
                                                   << ofonoNetworkInterface->getStatus());
                     mw->cellTreeWidget->addTopLevelItem(netItem);
                     netItem->setExpanded(true);
+                    netItem->setData(0,Qt::UserRole,QVariant(path.path()));
+
+                    QOfonoDataConnectionInterface dc(path.path(),this);
+                    foreach(const QDBusObjectPath dcPath,dc.getPrimaryContexts()) {
+                        QOfonoPrimaryDataContextInterface context(dcPath.path(),this);
+                        //QTreeWidgetItem *netItem;
+                        netItem = new QTreeWidgetItem(QStringList()
+                                                      << context.getName()
+                                                      << (context.isActive() ? "Connected":"Not Connected")
+                                                      << context.getApName()
+                                                      << (dc.isPowered() ?"On":"Off"));
+
+                        mw->cellTreeWidget->addTopLevelItem(netItem);
+                        netItem->setExpanded(true);
+                        netItem->setData(0,Qt::UserRole,QVariant(dcPath.path()));
+                    }
+
+
 
                     QOfonoSmsInterface *smsIface;
                     smsIface = new QOfonoSmsInterface(path.path(), this);
@@ -356,7 +374,6 @@ void Window::updateTree()
 
                     connect(smsIface,SIGNAL(incomingMessage(QString, QVariantMap)),
                             this,SLOT(incomingMessage(QString,QVariantMap)));
-                    netItem->setData(0,Qt::UserRole,QVariant(path.path()));
                 }
             }
         }
