@@ -332,7 +332,8 @@ void Window::updateTree()
                     QOfonoModemInterface *modemIface;
                     modemIface = new QOfonoModemInterface(path.path(),this);
                     knownModems << path.path();
-
+                    if(!modemIface->isPowered())
+                        continue;
                     connect(modemIface,SIGNAL(propertyChangedContext(QString,QString,QDBusVariant)),
                             this,SLOT(ofonoModemPropertyChangedContext(QString,QString,QDBusVariant)));
 
@@ -349,22 +350,22 @@ void Window::updateTree()
                     netItem->setExpanded(true);
                     netItem->setData(0,Qt::UserRole,QVariant(path.path()));
 
-                    QOfonoDataConnectionInterface dc(path.path(),this);
+                    QOfonoDataConnectionManagerInterface dc(path.path(),this);
                     foreach(const QDBusObjectPath dcPath,dc.getPrimaryContexts()) {
                         QOfonoPrimaryDataContextInterface context(dcPath.path(),this);
                         //QTreeWidgetItem *netItem;
-                        netItem = new QTreeWidgetItem(QStringList()
-                                                      << context.getName()
-                                                      << (context.isActive() ? "Connected":"Not Connected")
-                                                      << context.getApName()
-                                                      << (dc.isPowered() ?"On":"Off"));
+                        if(context.isValid() && !context.getName().isEmpty()) {
+                            netItem = new QTreeWidgetItem(QStringList()
+                                                          << context.getName()
+                                                          << (context.isActive() ? "Connected":"Not Connected")
+                                                          << context.getApName()
+                                                          << (dc.isPowered() ?"On":"Off"));
 
-                        mw->cellTreeWidget->addTopLevelItem(netItem);
-                        netItem->setExpanded(true);
-                        netItem->setData(0,Qt::UserRole,QVariant(dcPath.path()));
+                            mw->cellTreeWidget->addTopLevelItem(netItem);
+                            netItem->setExpanded(true);
+                            netItem->setData(0,Qt::UserRole,QVariant(dcPath.path()));
+                        }
                     }
-
-
 
                     QOfonoSmsInterface *smsIface;
                     smsIface = new QOfonoSmsInterface(path.path(), this);
