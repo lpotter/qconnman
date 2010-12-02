@@ -118,6 +118,7 @@ private slots:
     void disconnectService();
     void removeService();
     void scan();
+    void sendMessage(const QString &address);
 
 private:
     void createActions();

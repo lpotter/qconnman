@@ -115,8 +115,8 @@ public:
     QDBusObjectPath connectService(QVariantMap &map);
     void registerAgent(QDBusObjectPath &path);
     void unregisterAgent(QDBusObjectPath path);
-    void registerCounter(QDBusObjectPath path, quint32 interval);
-    void unregisterCounter(QDBusObjectPath path);
+    void registerCounter(const QString &path, quint32 interval);
+    void unregisterCounter(const QString &path);
 
     QString requestSession(const QString &bearerName);
     void releaseSession();
@@ -307,20 +307,24 @@ protected:
     void disconnectNotify(const char *signal);
 };
 
-//class QConnmanCounterInterfacePrivate;
-//class QConnmanCounterInterface : public QDBusAbstractInterface
-//{
-//    Q_OBJECT
-//
-//public:
-//
-//    QConnmanCounterInterface(QObject *parent = 0);
-//    ~QConnmanCounterInterface();
-//
+class QConnmanCounterInterfacePrivate;
+class QConnmanCounterInterface : public QDBusAbstractInterface
+{
+    Q_OBJECT
+
+public:
+
+    QConnmanCounterInterface(const QString &dbusPathName, QObject *parent = 0);
+    ~QConnmanCounterInterface();
+
 //    void release();
-//private:
-//    QConnmanCounterInterfacePrivate *d;
-//};
+    QString getInterface();
+    quint32 getReceivedByteCount();
+    quint32 getTransmittedByteCount();
+
+private:
+    QConnmanCounterInterfacePrivate *d;
+};
 
 class QConnmanDeviceInterface : public QDBusAbstractInterface
 {
@@ -358,19 +362,19 @@ protected:
 
 };
 
-class QConnmanDBusHelper: public QObject, protected QDBusContext
- {
-     Q_OBJECT
- public:
-    QConnmanDBusHelper(QObject *parent = 0);
-    ~QConnmanDBusHelper();
+//class QConnmanDBusHelper: public QObject, protected QDBusContext
+// {
+//     Q_OBJECT
+// public:
+//    QConnmanDBusHelper(QObject *parent = 0);
+//    ~QConnmanDBusHelper();
 
- public slots:
-    void propertyChanged(const QString &, const QDBusVariant &);
+// public slots:
+//    void propertyChanged(const QString &, const QDBusVariant &);
 
-Q_SIGNALS:
-    void propertyChangedContext(const QString &,const QString &,const QDBusVariant &);
-};
+//Q_SIGNALS:
+//    void propertyChangedContext(const QString &,const QString &,const QDBusVariant &);
+//};
 
 QT_END_NAMESPACE
 

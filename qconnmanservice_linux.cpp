@@ -52,7 +52,7 @@
 #include <QtDBus/QDBusPendingCall>
 
 #include "qconnmanservice_linux_p.h"
-
+#include "qsysteminfodbushelper_p.h"
 
 QT_BEGIN_NAMESPACE
 static QDBusConnection dbusConnection = QDBusConnection::systemBus();
@@ -73,7 +73,7 @@ QConnmanManagerInterface::~QConnmanManagerInterface()
 void QConnmanManagerInterface::connectNotify(const char *signal)
 {
 if (QLatin1String(signal) == SIGNAL(propertyChanged(QString,QDBusVariant))) {
-        if(!connection().connect(QLatin1String(CONNMAN_SERVICE),
+        if (!connection().connect(QLatin1String(CONNMAN_SERVICE),
                                QLatin1String(CONNMAN_MANAGER_PATH),
                                QLatin1String(CONNMAN_MANAGER_INTERFACE),
                                QLatin1String("PropertyChanged"),
@@ -93,8 +93,8 @@ if (QLatin1String(signal) == SIGNAL(propertyChanged(QString,QDBusVariant))) {
         }
     }
     if (QLatin1String(signal) == SIGNAL(propertyChangedContext(QString,QString,QDBusVariant))) {
-        QConnmanDBusHelper *helper;
-        helper = new QConnmanDBusHelper(this);
+        QSystemInfoDBusHelper *helper;
+        helper = new QSystemInfoDBusHelper(this);
 
         dbusConnection.connect(QLatin1String(CONNMAN_SERVICE),
                                QLatin1String(CONNMAN_MANAGER_PATH),
@@ -161,7 +161,7 @@ bool QConnmanManagerInterface::requestScan(const QString &type)
     QDBusReply<QString> reply =  this->call(QLatin1String("RequestScan"), QVariant::fromValue(type));
 
     bool ok = true;
-    if(reply.error().type() == QDBusError::InvalidArgs) {
+    if (reply.error().type() == QDBusError::InvalidArgs) {
         qWarning() << reply.error().message();
         ok = false;
     }
@@ -172,7 +172,7 @@ bool QConnmanManagerInterface::enableTechnology(const QString &type)
 {
     QDBusReply<QList<QDBusObjectPath> > reply =  this->call(QLatin1String("EnableTechnology"), QVariant::fromValue(type));
     bool ok = true;
-    if(reply.error().type() == QDBusError::InvalidArgs) {
+    if (reply.error().type() == QDBusError::InvalidArgs) {
         qWarning() << reply.error().message();
         ok = false;
     }
@@ -183,7 +183,7 @@ bool QConnmanManagerInterface::disableTechnology(const QString &type)
 {
     QDBusReply<QList<QDBusObjectPath> > reply =  this->call(QLatin1String("DisableTechnology"), QVariant::fromValue(type));
     bool ok = true;
-    if(reply.error().type() == QDBusError::InvalidArgs) {
+    if (reply.error().type() == QDBusError::InvalidArgs) {
         qWarning() << reply.error().message();
         ok = false;
     }
@@ -193,7 +193,7 @@ bool QConnmanManagerInterface::disableTechnology(const QString &type)
 QDBusObjectPath QConnmanManagerInterface::connectService(QVariantMap &map)
 {
     QDBusReply<QDBusObjectPath > reply =  this->call(QLatin1String("ConnectService"), QVariant::fromValue(map));
-    if(!reply.isValid()) {
+    if (!reply.isValid()) {
         qDebug() << reply.error().message();
 
     }
@@ -208,17 +208,29 @@ void QConnmanManagerInterface::unregisterAgent(QDBusObjectPath /*path*/)
 {
 }
 
-void QConnmanManagerInterface::registerCounter(QDBusObjectPath /*path*/, quint32 /*interval*/)
-{
+void QConnmanManagerInterface::registerCounter(const QString &path, quint32 interval)
+{   QDBusReply<QList<QDBusObjectPath> > reply =  this->call(QLatin1String("RegisterCounter"),
+                                                            QVariant::fromValue(path),
+                                                            QVariant::fromValue(interval));
+    bool ok = true;
+    if (reply.error().type() == QDBusError::InvalidArgs) {
+        qWarning() << reply.error().message();
+    }
 }
 
-void QConnmanManagerInterface::unregisterCounter(QDBusObjectPath /*path*/)
-{
+void QConnmanManagerInterface::unregisterCounter(const QString &path)
+{   QDBusReply<QList<QDBusObjectPath> > reply =  this->call(QLatin1String("UnregisterCounter"),
+                                                            QVariant::fromValue(path));
+    bool ok = true;
+    if (reply.error().type() == QDBusError::InvalidArgs) {
+        qWarning() << reply.error().message();
+    }
 }
 
 QString QConnmanManagerInterface::requestSession(const QString &bearerName)
 {
-    QDBusReply<QList<QDBusObjectPath> > reply =  this->call(QLatin1String("RequestSession"), QVariant::fromValue(bearerName));
+    QDBusReply<QList<QDBusObjectPath> > reply =  this->call(QLatin1String("RequestSession"),
+                                                            QVariant::fromValue(bearerName));
     return QString();
 }
 
@@ -230,11 +242,27 @@ void QConnmanManagerInterface::releaseSession()
 
 QDBusObjectPath QConnmanManagerInterface::lookupService(const QString &service)
 {
-    QDBusReply<QDBusObjectPath > reply =  this->call(QLatin1String("LookupService"), QVariant::fromValue(service));
-    if(!reply.isValid()) {
-        qDebug() << reply.error().message();
+    foreach(const QString &servicepath,getServices()) {
+        if (!servicepath.isEmpty()) {
+            QConnmanServiceInterface serv(servicepath,this);
+            if (serv.getName() == service) {
+                return QDBusObjectPath(servicepath);
+            }
+            else if (serv.getType() == service) {
+                return QDBusObjectPath(servicepath);
+            }
+            QConnmanTechnologyInterface tech(getPathForTechnology(serv.getType()));
+            if (tech.isValid())  {
+                foreach(const QString &dev,tech.getDevices()) {
+                    QConnmanDeviceInterface devIface(dev);
+                    if (devIface.getInterface() == service ||
+                       devIface.getName() == service)
+                        return QDBusObjectPath(servicepath);
+                }
+            }
+        }
     }
-    return reply;
+    return QDBusObjectPath();
 }
 
 // properties
@@ -295,8 +323,8 @@ QStringList QConnmanManagerInterface::getServices()
 
 QString QConnmanManagerInterface::getPathForTechnology(const QString &name)
 {
-    foreach(const QString path, getTechnologies()) {
-        if(path.contains(name)) {
+    foreach(const QString &path, getTechnologies()) {
+        if (path.contains(name)) {
             return path;
         }
     }
@@ -318,7 +346,7 @@ QConnmanNetworkInterface::~QConnmanNetworkInterface()
 void QConnmanNetworkInterface::connectNotify(const char *signal)
 {
     if (QLatin1String(signal) == SIGNAL(propertyChanged(QString,QDBusVariant))) {
-        if(!connection().connect(QLatin1String(CONNMAN_SERVICE),
+        if (!connection().connect(QLatin1String(CONNMAN_SERVICE),
                                this->path(),
                                QLatin1String(CONNMAN_NETWORK_INTERFACE),
                                QLatin1String("PropertyChanged"),
@@ -327,8 +355,8 @@ void QConnmanNetworkInterface::connectNotify(const char *signal)
         }
     }
     if (QLatin1String(signal) == SIGNAL(propertyChangedContext(QString,QString,QDBusVariant))) {
-        QConnmanDBusHelper *helper;
-        helper = new QConnmanDBusHelper(this);
+        QSystemInfoDBusHelper *helper;
+        helper = new QSystemInfoDBusHelper(this);
 
         dbusConnection.connect(QLatin1String(CONNMAN_SERVICE),
                                this->path(),
@@ -465,8 +493,6 @@ QVariant QConnmanProfileInterface::getProperty(const QString &property)
     QVariantMap map = getProperties();
     if (map.contains(property)) {
         var = map.value(property);
-    } else {
-        qDebug() <<__FUNCTION__<< "Could not find" << property;
     }
     return var;
 }
@@ -516,8 +542,8 @@ void QConnmanServiceInterface::connectNotify(const char *signal)
                                this,SIGNAL(propertyChanged(QString,QDBusVariant)));
     }
     if (QLatin1String(signal) == SIGNAL(propertyChangedContext(QString,QString,QDBusVariant))) {
-        QConnmanDBusHelper *helper;
-        helper = new QConnmanDBusHelper(this);
+        QSystemInfoDBusHelper *helper;
+        helper = new QSystemInfoDBusHelper(this);
 
         dbusConnection.connect(QLatin1String(CONNMAN_SERVICE),
                                this->path(),
@@ -549,8 +575,6 @@ QVariant QConnmanServiceInterface::getProperty(const QString &property)
     QVariantMap map = getProperties();
     if (map.contains(property)) {
         var = map.value(property);
-    } else {
-//        qDebug() <<__FUNCTION__<< "Could not find" << property;
     }
     return var;
 }
@@ -749,8 +773,8 @@ void QConnmanTechnologyInterface::connectNotify(const char *signal)
                                this,SIGNAL(propertyChanged(QString,QDBusVariant)));
     }
     if (QLatin1String(signal) == SIGNAL(propertyChangedContext(QString,QString,QDBusVariant))) {
-        QConnmanDBusHelper *helper;
-        helper = new QConnmanDBusHelper(this);
+        QSystemInfoDBusHelper *helper;
+        helper = new QSystemInfoDBusHelper(this);
 
         dbusConnection.connect(QLatin1String(CONNMAN_SERVICE),
                                this->path(),
@@ -863,7 +887,29 @@ void QConnmanAgentInterface::cancel()
 
 
 /////////////////////////////////////////
+QConnmanCounterInterface::QConnmanCounterInterface(const QString &dbusPathName,QObject *parent)
+    : QDBusAbstractInterface(QLatin1String(CONNMAN_SERVICE),
+                             dbusPathName,
+                             CONNMAN_COUNTER_INTERFACE,
+                             QDBusConnection::systemBus(), parent)
+{
+}
 
+QConnmanCounterInterface::~QConnmanCounterInterface()
+{
+}
+
+quint32 QConnmanCounterInterface::getReceivedByteCount()
+{
+return 0;
+}
+
+quint32 QConnmanCounterInterface::getTransmittedByteCount()
+{
+return 0;
+}
+
+/////////////////////////////////////////
 QConnmanDeviceInterface::QConnmanDeviceInterface(const QString &dbusPathName,QObject *parent)
     : QDBusAbstractInterface(QLatin1String(CONNMAN_SERVICE),
                              dbusPathName,
@@ -887,8 +933,8 @@ void QConnmanDeviceInterface::connectNotify(const char *signal)
 
     }
     if (QLatin1String(signal) == SIGNAL(propertyChangedContext(QString,QString,QDBusVariant))) {
-        QConnmanDBusHelper *helper;
-        helper = new QConnmanDBusHelper(this);
+        QSystemInfoDBusHelper *helper;
+        helper = new QSystemInfoDBusHelper(this);
 
         dbusConnection.connect(QLatin1String(CONNMAN_SERVICE),
                                this->path(),
@@ -917,13 +963,7 @@ QVariantMap QConnmanDeviceInterface::getProperties()
 bool QConnmanDeviceInterface::setProperty(const QString &name, const QDBusVariant &value)
 {
 
-//    QList<QVariant> args;
-    qWarning() << __FUNCTION__ << name << value.variant();
-//    args << qVariantFromValue(name);
-//    args << qVariantFromValue(value);
-
     QDBusMessage reply = this->call(QLatin1String("SetProperty"),name, qVariantFromValue(value));
-qWarning() << reply.errorMessage();
 
     return true;
 }
@@ -931,7 +971,7 @@ qWarning() << reply.errorMessage();
 void QConnmanDeviceInterface::scan()
 {
     QDBusReply<QVariantMap> reply = this->call(QLatin1String("ProposeScan"));
-    if(!reply.isValid()) {
+    if (!reply.isValid()) {
         qDebug() << reply.error().message();
     }
 }
@@ -1017,22 +1057,5 @@ bool QConnmanDeviceInterface::setEnabled(bool powered)
     return true;
 }
 
-QConnmanDBusHelper::QConnmanDBusHelper(QObject * parent)
-        : QObject(parent)
-{
-}
-
-QConnmanDBusHelper::~QConnmanDBusHelper()
-{
-}
-
-void QConnmanDBusHelper::propertyChanged(const QString &item, const QDBusVariant &var)
-{
-    QDBusMessage msg = this->message();
-//    qWarning() << sender();
- //   qWarning()  << msg.interface() << msg.path() << item << var.variant() <<"\n";
-    Q_EMIT propertyChangedContext(msg.path() ,item, var);
-}
-
-/////////////////
+///////////////////
 QT_END_NAMESPACE

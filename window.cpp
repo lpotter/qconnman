@@ -53,7 +53,8 @@
 #include "ui_form.h"
 #include "ui_wizard.h"
 #include "ui_sendSmsDialog.h"
-#include "ui_smsmessagebox.h"
+#include "newmessage.h"
+//#include "ui_smsmessagebox.h"
 
 
 Window::Window()
@@ -328,10 +329,10 @@ void Window::updateTree()
 
             Q_FOREACH(QDBusObjectPath path, ofonoManager->getModems()) {
 //                initModem(path.path());
-                if(!knownModems.contains(path.path())) {
                     QOfonoModemInterface *modemIface;
                     modemIface = new QOfonoModemInterface(path.path(),this);
-                    knownModems << path.path();
+                    if(!knownModems.contains(path.path()))
+                        knownModems << path.path();
                     if(!modemIface->isPowered())
                         continue;
                     connect(modemIface,SIGNAL(propertyChangedContext(QString,QString,QDBusVariant)),
@@ -350,10 +351,11 @@ void Window::updateTree()
                     netItem->setExpanded(true);
                     netItem->setData(0,Qt::UserRole,QVariant(path.path()));
 
+
+                    // get any 3G connection types
                     QOfonoDataConnectionManagerInterface dc(path.path(),this);
                     foreach(const QDBusObjectPath dcPath,dc.getPrimaryContexts()) {
                         QOfonoPrimaryDataContextInterface context(dcPath.path(),this);
-                        //QTreeWidgetItem *netItem;
                         if(context.isValid() && !context.getName().isEmpty()) {
                             netItem = new QTreeWidgetItem(QStringList()
                                                           << context.getName()
@@ -365,8 +367,6 @@ void Window::updateTree()
                             netItem->setExpanded(true);
                             netItem->setData(0,Qt::UserRole,QVariant(dcPath.path()));
                         }
-                    }
-
                     QOfonoSmsInterface *smsIface;
                     smsIface = new QOfonoSmsInterface(path.path(), this);
 
@@ -626,28 +626,34 @@ void  Window::appletContextMenu(const QPoint &/*point*/)
         menu.addSeparator();
     }
 
-    Q_FOREACH(QDBusObjectPath path, ofonoManager->getModems()) {
-        qDebug() << path.path();
-        QOfonoModemInterface modemIface(path.path(),this);
-        qDebug() << modemIface.getName() << modemIface.isPowered();
-        QString str = modemIface.getName();
-        if(str.isEmpty()) {
-            str = modemIface.getManufacturer() +" "+modemIface.getModel();
-        }
-        QString textItem = str +": "+(modemIface.isPowered() ? "On":"Off");
+    if(connman->getTechnologies().contains("cellular")) {
+        Q_FOREACH(QDBusObjectPath path, ofonoManager->getModems()) {
+            if(!path.path().isEmpty() || !path.path().isNull()) {
+                QOfonoModemInterface modemIface(path.path(),this);
+                if(!modemIface.isValid()) {
+                    continue;
+                }
+                qDebug() << modemIface.getName() << modemIface.isPowered();
+                QString str = modemIface.getName();
+                if(str.isEmpty()) {
+                    str = modemIface.getManufacturer() +" "+modemIface.getModel();
+                }
+                QString textItem = str +": "+(modemIface.isPowered() ? "On":"Off");
 
-        action = new QAction(textItem,this);
-        action->setDisabled(true);
-        menu.addAction(action);
+                action = new QAction(textItem,this);
+                action->setDisabled(true);
+                menu.addAction(action);
 
-        if(modemIface.isPowered()) {
-            action = new QAction(QString("Disable "+str),this);
-        } else {
-            action = new QAction(QString("Enable "+str),this);
+                if(modemIface.isPowered()) {
+                    action = new QAction(QString("Disable "+str),this);
+                } else {
+                    action = new QAction(QString("Enable "+str),this);
+                }
+                connect(action,SIGNAL(triggered()),this,SLOT(deviceContextMenuClicked()));
+                menu.addAction(action);
+                menu.addSeparator();
+            }
         }
-        connect(action,SIGNAL(triggered()),this,SLOT(deviceContextMenuClicked()));
-        menu.addAction(action);
-        menu.addSeparator();
     }
 
 
@@ -781,18 +787,19 @@ void Window::immediateMessage(const QString& msg,const QVariantMap &map)
 void Window::incomingMessage(const QString& msg,const QVariantMap &map)
 {
     qDebug() <<__FUNCTION__ << msg << map["Sender"] << map["LocalSentTime"];
-    QDialog *wid = new QDialog();
-    Ui::SmsMessageBox d;
-    d.setupUi(wid);
-    d.fromLineEdit->setText(map["Sender"].toString());
-    d.messageTextEdit->setText( msg);
-    d.timeSentLabel->setText(map["LocalSentTime"].toString());
-    int result = wid->exec();
-    qDebug() << result;
-    if(result != 0) {
+    NewMessage *newmessagebox = new NewMessage();
+    newmessagebox->setAddress(map["Sender"].toString());
+    newmessagebox->setBody( msg);
+    newmessagebox->setTimestamp(map["LocalSentTime"].toString());
+    connect(newmessagebox,SIGNAL(replyTo(QString)),
+            this,SLOT(sendMessage(QString)));
 
-    }
-    delete wid;
+    newmessagebox->exec();
+//    qDebug() << result;
+//    if(result != 0) {
+
+//    }
+    delete newmessagebox;
 
 }
 
@@ -803,16 +810,23 @@ void Window::cellItemClicked(QTreeWidgetItem *item,int)
 
 void Window::sendMessage()
 {
+    sendMessage("");
+}
+
+void Window::sendMessage(const QString &address)
+{
     QDialog *wid = new QDialog();
     Ui::Dialog d;
     d.setupUi(wid);
+    wid->setWindowTitle("Send New Message");
+    d.toLineEdit->setText(address);
+
     int result = wid->exec();
     if(result != 0) {
         QString to = d.toLineEdit->text();
         QString msg = d.messageText->toPlainText();
 
-        QOfonoSmsInterface smsIface(mw->cellTreeWidget->currentItem()->data(0,Qt::UserRole).toString(),this);
-
+        QOfonoSmsInterface smsIface(mw->cellTreeWidget->currentItem()->data(0,Qt::UserRole).toString(), 0);
         smsIface.sendMessage(to,msg);
     }
     delete wid;

@@ -55,6 +55,23 @@
 
 
 QT_BEGIN_NAMESPACE
+
+QDBusArgument & operator << (QDBusArgument &argument,const QOfonoProperties &p)
+{
+    argument.beginStructure();
+    argument << p.path << p.properties;
+    argument.endStructure();
+    return argument;
+}
+
+const QDBusArgument & operator >> (const QDBusArgument &argument,QOfonoProperties &p)
+{
+    argument.beginStructure();
+    argument >> p.path >> p.properties;
+    argument.endStructure();
+    return argument;
+}
+
 static QDBusConnection dbusConnection = QDBusConnection::systemBus();
 
 
@@ -64,6 +81,8 @@ QOfonoManagerInterface::QOfonoManagerInterface( QObject *parent)
                                  OFONO_MANAGER_INTERFACE,
                                  QDBusConnection::systemBus(), parent)
 {
+    qDBusRegisterMetaType<QOfonoProperties>();
+    qDBusRegisterMetaType<QOfonoPropertyMap>();
 }
 
 QOfonoManagerInterface::~QOfonoManagerInterface()
@@ -72,21 +91,31 @@ QOfonoManagerInterface::~QOfonoManagerInterface()
 
 QList <QDBusObjectPath> QOfonoManagerInterface::getModems()
 {
-    QVariant var = getProperty("Modems");
-    return qdbus_cast<QList<QDBusObjectPath> >(var);
+    QDBusReply <QOfonoPropertyMap > reply =  this->call(QLatin1String("GetModems"));
+
+    QList<QDBusObjectPath> modems;
+    if(reply.isValid()) {
+        foreach(const QOfonoProperties &property, reply.value()) {
+            modems << property.path;
+        }
+    } else {
+        qDebug() << Q_FUNC_INFO << "reply invalid";
+    }
+
+    return modems;
 }
 
 QDBusObjectPath QOfonoManagerInterface::currentModem()
 {
     QList<QDBusObjectPath> modems = getModems();
-    foreach(const QDBusObjectPath modem, modems) {
+
+    foreach(const QDBusObjectPath &modem, modems) {
         QOfonoModemInterface device(modem.path());
-        if(device.isPowered() && device.isOnline())
-        return modem;;
+        if(device.isPowered() /*&& device.isOnline()*/)
+        return modem;
     }
     return QDBusObjectPath();
 }
-
 
 void QOfonoManagerInterface::connectNotify(const char *signal)
 {
@@ -125,20 +154,22 @@ void QOfonoManagerInterface::disconnectNotify(const char *signal)
 
 QVariant QOfonoManagerInterface::getProperty(const QString &property)
 {
-    QVariant var;
     QVariantMap map = getProperties();
     if (map.contains(property)) {
-        var = map.value(property);
+        return map.value(property);
     } else {
         qDebug() << Q_FUNC_INFO << "does not contain" << property;
     }
-    return var;
+    return QVariant();
 }
 
 QVariantMap QOfonoManagerInterface::getProperties()
 {
     QDBusReply<QVariantMap > reply = this->call(QLatin1String("GetProperties"));
-    return reply.value();
+    if(reply.isValid())
+        return reply.value();
+    else
+        return QVariantMap();
 }
 
 QOfonoDBusHelper::QOfonoDBusHelper(QObject * parent)
@@ -317,14 +348,14 @@ QString QOfonoNetworkRegistrationInterface::getStatus()
 quint16 QOfonoNetworkRegistrationInterface::getLac()
 {
     QVariant var = getProperty("LocationAreaCode");
-    return qdbus_cast<quint16>(var);
+    return var.value<quint16>();
 }
 
 
-quint16 QOfonoNetworkRegistrationInterface::getCellId()
+quint32 QOfonoNetworkRegistrationInterface::getCellId()
 {
     QVariant var = getProperty("CellId");
-    return qdbus_cast<quint16>(var);
+    return var.value<quint32>();
 }
 
 QString QOfonoNetworkRegistrationInterface::getTechnology()
@@ -355,8 +386,19 @@ QString QOfonoNetworkRegistrationInterface::getBaseStation()
 
 QList <QDBusObjectPath> QOfonoNetworkRegistrationInterface::getOperators()
 {
-    QVariant var = getProperty("Operators");
-    return qdbus_cast<QList <QDBusObjectPath> >(var);
+    QDBusReply <QOfonoPropertyMap > reply =  this->call(QLatin1String("GetOperators"));
+
+    QList<QDBusObjectPath> ops;
+
+    if(reply.isValid()) {
+        foreach(const QOfonoProperties &property, reply.value()) {
+            ops << property.path;
+        }
+    } else {
+        qDebug() << Q_FUNC_INFO << "reply invalid";
+    }
+
+    return ops;
 }
 
 void QOfonoNetworkRegistrationInterface::connectNotify(const char *signal)
@@ -557,6 +599,12 @@ QString QOfonoSimInterface::lockedPins()
 QString QOfonoSimInterface::cardIdentifier()
 {
     QVariant var = getProperty("CardIdentifier");
+    return qdbus_cast<QString>(var);
+}
+
+QString QOfonoSimInterface::getImsi()
+{
+    QVariant var = getProperty("SubscriberIdentity");
     return qdbus_cast<QString>(var);
 }
 
