@@ -128,7 +128,7 @@ private:
     QConnmanManagerInterface *connman;
     QList<QConnmanTechnologyInterface *> connmanTech;
     QList<QConnmanServiceInterface *> connmanServices;
-    QList<QConnmanNetworkInterface *> connmanNetworks;
+    QList<QConnmanServiceInterface *> connmanNetworks;
 
     QConnmanServiceInterface *wifiService;
 
@@ -139,7 +139,6 @@ private:
     QWidget *trayWidget;
     Ui_qconnmanApp *mw;
     void connectToService(const QString &service);
-    QString getServiceForNetwork(const QString &netPath);
 
     QStringList knownModems;
     QOfonoManagerInterface *ofonoManager;

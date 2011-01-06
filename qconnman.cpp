@@ -38,29 +38,8 @@ void QConnman::getInfo()
     QString wifiPath = connman->getPathForTechnology("/org/moblin/connman/technology/wifi");
     QConnmanTechnologyInterface techInterface(wifiPath, this);
 
-    QStringList devices = techInterface.getDevices();
-    qWarning() <<"devices" << devices;
-
     qWarning() << techInterface.getName() << techInterface.getState();
 //    qWarning() << techInterface.getType();
-
-    if(!devices.isEmpty()) {
-        QConnmanDeviceInterface devInterface(devices.at(0), this);
-
-         qWarning() << "wifi is powered" << devInterface.isPowered();
-
-        connman->requestScan("wifi");
-
-        // qWarning() << devInterface.getNetworks();
-        foreach(const QString &net, devInterface.getNetworks()) {
-            QConnmanNetworkInterface netInterface(net);
-            qWarning() <<"SSID"
-                    << netInterface.getWifiSsid()
-                    << netInterface.getSignalStrength()
-                    << netInterface.getWifiSecurity()
-                    << netInterface.isConnected();
-        }
-    }
 
 //    emit done();
 }
