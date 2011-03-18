@@ -347,8 +347,8 @@ void Window::updateTree()
                             netItem->setExpanded(true);
                             netItem->setData(0,Qt::UserRole,QVariant(dcPath.path()));
                         }
-                    QOfonoSmsInterface *smsIface;
-                    smsIface = new QOfonoSmsInterface(path.path(), this);
+                    QOfonoMessageManagerInterface *smsIface;
+                    smsIface = new QOfonoMessageManagerInterface(path.path(), this);
 
                     connect(smsIface,SIGNAL(immediateMessage(QString, QVariantMap)),
                             this,SLOT(immediateMessage(QString,QVariantMap)));
@@ -793,7 +793,7 @@ void Window::sendMessage(const QString &address)
         QString to = d.toLineEdit->text();
         QString msg = d.messageText->toPlainText();
 
-        QOfonoSmsInterface smsIface(mw->cellTreeWidget->currentItem()->data(0,Qt::UserRole).toString(), 0);
+        QOfonoMessageManagerInterface smsIface(mw->cellTreeWidget->currentItem()->data(0,Qt::UserRole).toString(), 0);
         smsIface.sendMessage(to,msg);
     }
     delete wid;
