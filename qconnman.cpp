@@ -35,7 +35,7 @@ void QConnman::getInfo()
 
     }
 
-    QString wifiPath = connman->getPathForTechnology("/org/moblin/connman/technology/wifi");
+    QString wifiPath = connman->getPathForTechnology("/net/connman/technology/wifi");
     QConnmanTechnologyInterface techInterface(wifiPath, this);
 
     qWarning() << techInterface.getName() << techInterface.getState();

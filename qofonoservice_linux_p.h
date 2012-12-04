@@ -1,34 +1,34 @@
 /****************************************************************************
 **
-** Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies).
-** All rights reserved.
-** Contact: Nokia Corporation (qt-info@nokia.com)
+** Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/
 **
 ** This file is part of the plugins of the Qt Toolkit.
 **
 ** $QT_BEGIN_LICENSE:LGPL$
-** No Commercial Usage
-** This file contains pre-release code and may not be distributed.
-** You may use this file in accordance with the terms and conditions
-** contained in the Technology Preview License Agreement accompanying
-** this package.
-**
 ** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 2.1 as published by the Free Software
-** Foundation and appearing in the file LICENSE.LGPL included in the
-** packaging of this file.  Please review the following information to
-** ensure the GNU Lesser General Public License version 2.1 requirements
-** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
+** This file may be used under the terms of the GNU Lesser General Public
+** License version 2.1 as published by the Free Software Foundation and
+** appearing in the file LICENSE.LGPL included in the packaging of this
+** file. Please review the following information to ensure the GNU Lesser
+** General Public License version 2.1 requirements will be met:
+** http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
 **
 ** In addition, as a special exception, Nokia gives you certain additional
-** rights.  These rights are described in the Nokia Qt LGPL Exception
+** rights. These rights are described in the Nokia Qt LGPL Exception
 ** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
 **
-** If you have questions regarding the use of this file, please contact
-** Nokia at qt-info@nokia.com.
+** GNU General Public License Usage
+** Alternatively, this file may be used under the terms of the GNU General
+** Public License version 3.0 as published by the Free Software Foundation
+** and appearing in the file LICENSE.GPL included in the packaging of this
+** file. Please review the following information to ensure the GNU General
+** Public License version 3.0 requirements will be met:
+** http://www.gnu.org/copyleft/gpl.html.
 **
-**
+** Other Usage
+** Alternatively, this file may be used in accordance with the terms and
+** conditions contained in a signed written agreement between you and Nokia.
 **
 **
 **
@@ -64,7 +64,9 @@
 #include <QtDBus/QDBusObjectPath>
 #include <QtDBus/QDBusContext>
 #include <QMap>
-#include <QVariantMap>
+
+#ifndef QT_NO_BEARERMANAGEMENT
+#ifndef QT_NO_DBUS
 
 #define OFONO_SERVICE	                         "org.ofono"
 #define OFONO_MANAGER_INTERFACE                  "org.ofono.Manager"
@@ -72,10 +74,11 @@
 #define OFONO_MODEM_INTERFACE                    "org.ofono.Modem"
 #define OFONO_NETWORK_REGISTRATION_INTERFACE     "org.ofono.NetworkRegistration"
 #define OFONO_NETWORK_OPERATOR_INTERFACE         "org.ofono.NetworkOperator"
+#define OFONO_DATA_CONNECTION_MANAGER_INTERFACE  "org.ofono.DataConnectionManager"
 #define OFONO_SIM_MANAGER_INTERFACE              "org.ofono.SimManager"
 #define OFONO_DATA_CONTEXT_INTERFACE             "org.ofono.PrimaryDataContext"
 
-#define OFONO_MESSAGE_MANAGER_INTERFACE          "org.ofono.MessageManager"
+#define OFONO_SMS_MANAGER_INTERFACE              "org.ofono.SmsManager"
 #define OFONO_PHONEBOOK_INTERFACE                "org.ofono.Phonebook"
 #define OFONO_MESSAGE_WAITING_INTERFACE          "org.ofono.MessageWaiting"
 
@@ -84,20 +87,10 @@
 
 QT_BEGIN_NAMESPACE
 
-struct QOfonoProperties
-{
-    QDBusObjectPath path;
-    QVariantMap properties;
-};
+QT_END_NAMESPACE
 
-Q_DECLARE_METATYPE(QOfonoProperties)
 
-QDBusArgument &operator<<(QDBusArgument &argument,const QOfonoProperties &prop);
-
-const QDBusArgument &operator>>(const QDBusArgument &argument,QOfonoProperties &prop);
-
-typedef QList<QOfonoProperties> QOfonoPropertyMap;
-Q_DECLARE_METATYPE(QOfonoPropertyMap)
+QT_BEGIN_NAMESPACE
 
 class QOfonoManagerInterface : public  QDBusAbstractInterface
 {
@@ -108,7 +101,7 @@ public:
     QOfonoManagerInterface( QObject *parent = 0);
     ~QOfonoManagerInterface();
 
-    QDBusObjectPath path() const;
+     QDBusObjectPath path() const;
 
     QVariantMap getProperties();
     bool setProperty(const QString &name, const QDBusVariant &value);
@@ -247,7 +240,6 @@ public:
     QString pinRequired();
     QString lockedPins();
     QString cardIdentifier();
-    QString getImsi();
 
 protected:
     void connectNotify(const char *signal);
@@ -256,14 +248,14 @@ protected:
 };
 
 
-class QOfonoConnectionManagerInterface : public QDBusAbstractInterface
+class QOfonoDataConnectionManagerInterface : public QDBusAbstractInterface
 {
     Q_OBJECT
 
 public:
 
-    QOfonoConnectionManagerInterface(const QString &dbusPathName, QObject *parent = 0);
-    ~QOfonoConnectionManagerInterface();
+    QOfonoDataConnectionManagerInterface(const QString &dbusPathName, QObject *parent = 0);
+    ~QOfonoDataConnectionManagerInterface();
 
     QVariantMap getProperties();
 
@@ -272,13 +264,8 @@ public:
     bool isAttached();
     bool isRoamingAllowed();
     bool isPowered();
-    QString bearer();
 
     bool setPower(bool on);
-
-Q_SIGNALS:
-    void propertyChanged(const QString &, const QDBusVariant &value);
-    void propertyChangedContext(const QString &,const QString &,const QDBusVariant &);
 
 protected:
     void connectNotify(const char *signal);
@@ -317,14 +304,14 @@ protected:
     bool setProp(const QString &, const QVariant &var);
 };
 
-class QOfonoMessageManagerInterface : public QDBusAbstractInterface
+class QOfonoSmsInterface : public QDBusAbstractInterface
 {
     Q_OBJECT
 
 public:
 
-    QOfonoMessageManagerInterface(const QString &dbusModemPathName, QObject *parent = 0);
-    ~QOfonoMessageManagerInterface();
+    QOfonoSmsInterface(const QString &dbusModemPathName, QObject *parent = 0);
+    ~QOfonoSmsInterface();
 
     QVariantMap getProperties();
     void sendMessage(const QString &to, const QString &message);
@@ -346,27 +333,41 @@ Q_SIGNALS:
     void incomingMessage(const QString &message, const QVariantMap &info);
 };
 
-//class QOfonoConnectionManagerInterface : public QDBusAbstractInterface
-//{
-//    Q_OBJECT
+class QOfonoMessageManagerInterface : public QDBusAbstractInterface
+{
+    Q_OBJECT
 
-//public:
+public:
 
-//    QOfonoConnectionManagerInterface(const QString &dbusModemPathName, QObject *parent = 0);
-//    ~QOfonoConnectionManagerInterface();
+    QOfonoMessageManagerInterface(const QString &dbusModemPathName, QObject *parent = 0);
+    ~QOfonoMessageManagerInterface();
 
-//    QVariantMap getProperties();
-//    QString bearer();
+    QVariantMap getProperties();
+    void sendMessage(const QString &to, const QString &message);
 
-//Q_SIGNALS:
-//    void propertyChanged(const QString &, const QDBusVariant &value);
-//    void propertyChangedContext(const QString &,const QString &,const QDBusVariant &);
+    //properties
 
-//protected:
-//    void connectNotify(const char *signal);
-//    void disconnectNotify(const char *signal);
-//    QVariant getProperty(const QString &);
+    QString  serviceCenterAddress();
+    bool useDeliveryReports();
+    QString bearer();
 
-//};
+protected:
+
+    void connectNotify(const char *signal);
+    void disconnectNotify(const char *signal);
+    QVariant getProperty(const QString &);
+
+Q_SIGNALS:
+
+    void propertyChanged(const QString &, const QDBusVariant &value);
+    void propertyChangedContext(const QString &,const QString &,const QDBusVariant &);
+    void immediateMessage(const QString &message, const QVariantMap &info);
+    void incomingMessage(const QString &message, const QVariantMap &info);
+
+};
+QT_END_NAMESPACE
+
+#endif // QT_NO_DBUS
+#endif // QT_NO_BEARERMANAGEMENT
 
 #endif //QOFONOSERVICE_H
