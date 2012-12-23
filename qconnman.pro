@@ -11,14 +11,16 @@ SOURCES += main.cpp \
     qconnman.cpp \
     window.cpp \
     newmessage.cpp \
-    qsysteminfodbushelper.cpp
+    qsysteminfodbushelper.cpp \
+    agentadaptor.cpp
 
 HEADERS += qconnmanservice_linux_p.h \
     qofonoservice_linux_p.h \
     qconnman.h \
     window.h \
     newmessage.h \
-    qsysteminfodbushelper_p.h
+    qsysteminfodbushelper_p.h \
+    agentadaptor.h
 
 RESOURCES = systray.qrc
 QT += xml svg

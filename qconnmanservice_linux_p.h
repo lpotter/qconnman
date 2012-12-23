@@ -59,11 +59,13 @@
 #include <QtDBus/QDBusInterface>
 #include <QtDBus/QDBusMessage>
 #include <QtDBus/QDBusReply>
+#include <QtDBus/QDBusArgument>
 
 #include <QtDBus/QDBusPendingCallWatcher>
 #include <QtDBus/QDBusObjectPath>
 #include <QtDBus/QDBusContext>
 #include <QMap>
+#include <QtCore/QMetaType>
 
 #ifndef __CONNMAN_DBUS_H
 
@@ -87,10 +89,18 @@
 
 QT_BEGIN_NAMESPACE
 
-QT_END_NAMESPACE
+struct ConnmanMap {
+    QDBusObjectPath objectPath;
+    QVariantMap propertyMap;
+};
+Q_DECLARE_METATYPE(QT_PREPEND_NAMESPACE(ConnmanMap));
 
+QDBusArgument &operator<<(QDBusArgument &argument, const ConnmanMap &obj);
+const QDBusArgument &operator>>(const QDBusArgument &argument, ConnmanMap &obj);
 
-QT_BEGIN_NAMESPACE
+typedef QList< ConnmanMap > ConnmanMapList;
+Q_DECLARE_METATYPE(QT_PREPEND_NAMESPACE(ConnmanMapList))
+
 
 class QConnmanManagerInterface : public  QDBusAbstractInterface
 {
@@ -133,7 +143,6 @@ public:
     QDBusObjectPath lookupService(const QString &);
 
     QString getPathForTechnology(const QString &tech);
-
 
 Q_SIGNALS:
     void propertyChanged(const QString &, const QDBusVariant &value);
@@ -240,7 +249,7 @@ public:
 
     QVariantMap getProperties();
 // properties
-    QString getState();
+    QString getPowerState();
     QString getName();
     QString getType();
 Q_SIGNALS:

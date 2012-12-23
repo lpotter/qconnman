@@ -1,6 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies).
+** Copyright (C) 2010 Lorn Potter
 ** All rights reserved.
 ** Contact: Nokia Corporation (qt-info@nokia.com)
 **
@@ -46,6 +46,7 @@
 #include <QtGui/QDialog>
 #include "qconnmanservice_linux_p.h"
 #include "qofonoservice_linux_p.h"
+#include "agentadaptor.h"
 
 #include "ui_form.h"
 //#include "ui_trayapp.h"
@@ -119,8 +120,10 @@ private slots:
     void removeService();
     void scan();
     void sendMessage(const QString &address);
+    void userInputRequested(const QString &servicePath, const QVariantList &fields);
 
 private:
+     UserAgent *ua;
     void createActions();
     void createTrayIcon();
     void doTrigger();

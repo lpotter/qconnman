@@ -54,6 +54,7 @@ QSystemInfoDBusHelper::~QSystemInfoDBusHelper()
 
 void QSystemInfoDBusHelper::propertyChanged(const QString &item, const QDBusVariant &var)
 {
+
     QDBusMessage msg = this->message();
     Q_EMIT propertyChangedContext(msg.path() ,item, var);
 }
