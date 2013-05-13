@@ -28,6 +28,8 @@
 #include "qconnman.h"
 #include "qconnmanservice_linux_p.h"
 
+#include <connman-qt5/networkmanager.h>
+
 QConnman::QConnman(QObject *parent) :
     QObject(parent)
 {
@@ -36,37 +38,37 @@ QConnman::QConnman(QObject *parent) :
 
 void QConnman::getInfo()
 {
-    QConnmanManagerInterface *connman = new QConnmanManagerInterface();
-    if(!connman->isValid()) {
-        qWarning() << connman->lastError().message();
+    NetworkManager *connman = NetworkManagerFactory::createInstance();
+    if(!connman->isAvailable()) {
+        //qWarning() << connman->lastError().message();
         emit done();
         return;
     }
     connect(connman, SIGNAL(stateChanged(QString)),this,SLOT(stateChanged(QString)));
     connect(connman,SIGNAL(propertyChanged(QString,QVariant&)),this,SLOT(propertyChanged(QString,QVariant&)));
 
-    qWarning() << "State" << connman->getState();
-    qWarning() << "available technologies" << connman->getAvailableTechnologies();
-    qWarning() << "enabled technologies" << connman->getEnabledTechnologies();
-    qWarning() << "connected technologies" << connman->getConnectedTechnologies();
+    qWarning() << "State" << connman->state();
+    qWarning() << "available technologies" << connman->technologiesList();
+//    qWarning() << "enabled technologies" << connman->getEnabledTechnologies();
+//    qWarning() << "connected technologies" << connman->getConnectedTechnologies();
 
-    qWarning() << "default technology" << connman->getDefaultTechnology();
+//    qWarning() << "default technology" << connman->getDefaultTechnology();
 
-    qWarning() << "active profile" << connman->getActiveProfile();
-    qWarning() << "technologies" << connman->getTechnologies();
-    qWarning() << "services" << connman->getServices();
-    qWarning() << "profiles" << connman->getProfiles();
+//    qWarning() << "active profile" << connman->getActiveProfile();
+  //  qWarning() << "technologies" << connman->getTechnologies();
+//    qWarning() << "services" << connman->servicesList();
+//    qWarning() << "profiles" << connman->getProfiles();
 
-    if(!connman->getEnabledTechnologies().contains("wifi")
-        && connman->enableTechnology("wifi")) {
-        qWarning() << "enabled technologies" << connman->getEnabledTechnologies();
+//    if(!connman->getEnabledTechnologies().contains("wifi")
+//        && connman->enableTechnology("wifi")) {
+//        qWarning() << "enabled technologies" << connman->getEnabledTechnologies();
 
-    }
+//    }
 
-    QString wifiPath = connman->getPathForTechnology("/net/connman/technology/wifi");
-    QConnmanTechnologyInterface techInterface(wifiPath, this);
+//    QString wifiPath = connman->getPathForTechnology("/net/connman/technology/wifi");
+//    QConnmanTechnologyInterface techInterface(wifiPath, this);
 
-    qWarning() << techInterface.getName() << techInterface.getPowerState();
+//    qWarning() << techInterface.getName() << techInterface.getPowerState();
 //    qWarning() << techInterface.getType();
 
 //    emit done();

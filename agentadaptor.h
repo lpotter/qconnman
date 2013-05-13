@@ -1,9 +1,9 @@
 /****************************************************************************
 **
 ** Copyright (C) 2012 Lorn Potter
-** Contact: http://www.qt-project.org/legal
+** Contact: lorn.potter@gmail.com
 **
-** This file is part of the QtSensors module of the Qt Toolkit.
+
 **
 ** $QT_BEGIN_LICENSE:LGPL$
 ** Commercial License Usage
@@ -69,9 +69,11 @@ signals:
     void userInputRequested(const QString &servicePath, const QVariantList &fields);
     void userInputCanceled();
     void errorReported(const QString &error);
+    void userConnectRequested();
 
 private slots:
     void updateMgrAvailability(bool &available);
+    void requestConnect();
 
 private:
     void requestUserInput(ServiceRequestData* data);
@@ -98,6 +100,7 @@ class AgentAdaptor : public QDBusAbstractAdaptor
      void Release();
      void ReportError(const QDBusObjectPath &service_path, const QString &error);
      void RequestBrowser(const QDBusObjectPath &service_path, const QString &url);
+     void RequestConnect(/*const QDBusMessage &message*/);
      Q_NOREPLY void RequestInput(const QDBusObjectPath &service_path,
                                  const QVariantMap &fields,
                                  const QDBusMessage &message);

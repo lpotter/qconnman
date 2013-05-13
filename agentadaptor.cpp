@@ -1,9 +1,9 @@
 /****************************************************************************
 **
 ** Copyright (C) 2012 Lorn Potter
-** Contact: http://www.qt-project.org/legal
+** Contact: lorn.potter@gmail.com
 **
-** This file is part of the QtSensors module of the Qt Toolkit.
+
 **
 ** $QT_BEGIN_LICENSE:LGPL$
 ** Commercial License Usage
@@ -121,6 +121,11 @@ void UserAgent::updateMgrAvailability(bool &available)
     }
 }
 
+void UserAgent::requestConnect()
+{
+    Q_EMIT userConnectRequested();
+}
+
 
 AgentAdaptor::AgentAdaptor(UserAgent* parent)
     : QDBusAbstractAdaptor(parent),
@@ -174,4 +179,10 @@ void AgentAdaptor::Cancel()
 {
     qDebug() << "WARNING: request to agent got canceled";
     m_userAgent->cancelUserInput();
+}
+
+void AgentAdaptor::RequestConnect(/* const QDBusMessage &message*/)
+{
+    qDebug() << Q_FUNC_INFO;// << message.path();
+    m_userAgent->requestConnect();
 }
