@@ -1,17 +1,10 @@
 /****************************************************************************
 **
-** Copyright (C) 2010 Lorn Potter
+** Copyright (C) 2010-2013 Lorn Potter
 ** All rights reserved.
 ** Contact: Nokia Corporation (qt-info@nokia.com)
 **
 ** This file is part of the examples of the Qt Toolkit.
-**
-** $QT_BEGIN_LICENSE:LGPL$
-** No Commercial Usage
-** This file contains pre-release code and may not be distributed.
-** You may use this file in accordance with the terms and conditions
-** contained in the Technology Preview License Agreement accompanying
-** this package.
 **
 ** GNU Lesser General Public License Usage
 ** Alternatively, this file may be used under the terms of the GNU Lesser
@@ -21,21 +14,6 @@
 ** ensure the GNU Lesser General Public License version 2.1 requirements
 ** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights.  These rights are described in the Nokia Qt LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
-**
-** If you have questions regarding the use of this file, please contact
-** Nokia at qt-info@nokia.com.
-**
-**
-**
-**
-**
-**
-**
-**
-** $QT_END_LICENSE$
 **
 ****************************************************************************/
 
@@ -81,7 +59,6 @@ protected:
 private slots:
     void iconActivated(QSystemTrayIcon::ActivationReason reason);
     void messageClicked();
-    void showWifi();
     void menuTriggered(QAction *action);
 
     void techChanged();
@@ -93,10 +70,12 @@ private slots:
 
     void updateTree();
 
-    void servicesPropertyChanged(const QString &, const QDBusVariant &);
-    void servicesPropertyChangedContext(const QString &,const QString &, const QDBusVariant &);
+    void serviceStateChanged(const QString &state);
+    void serviceStrengthChanged(uint);
 
-//    void technologyPropertyChanged(const QString &, const QDBusVariant &);
+    void servicesIpv4ConfigChanged(QVariantMap);
+
+
 
     void ofonoPropertyChangedContext(const QString &path,const QString &item, const QDBusVariant &value);
     void ofonoNetworkPropertyChangedContext(const QString &path,const QString &item, const QDBusVariant &value);
@@ -108,7 +87,6 @@ private slots:
     void cellItemClicked(QTreeWidgetItem*,int);
     void sendMessage();
 
-
     void contextMenu(const QPoint &);
     void appletContextMenu(const QPoint &);
 
@@ -119,23 +97,25 @@ private slots:
     void removeService();
     void scan();
     void sendMessage(const QString &address);
-    void userInputRequested(const QString &servicePath, const QVariantList &fields);
+    void userInputRequested(const QString &servicePath, const QVariantMap &fields);
     void requestConnect(const QDBusMessage &msg);
+    void doAutoConnect();
+
+    void connmanAvailableChanged(bool);
+    void connmanUnregistered(const QString  &);
+    void initNetworkManager();
+    void connectRequestFailed(const QString &error);
+    void connectToConnman(QString = "");
 
 private:
     QSystemTrayIcon *trayIcon;
-     UserAgent *ua;
     void createActions();
     void createTrayIcon();
     void doTrigger();
-    QDBusServiceWatcher *watcher;
 
     NetworkManager *connman;
-//    QList<QConnmanTechnologyInterface *> connmanTech;
-//    QList<NetworkService *> connmanServices;
-//    QList<NetworkService *> connmanNetworks;
-
-//    NetworkService *wifiService;
+    UserAgent *ua;
+    QDBusServiceWatcher *watcher;
 
     QAction *quitAction;
     QAction *wifiAction;
@@ -148,10 +128,6 @@ private:
     QStringList knownModems;
     QOfonoManagerInterface *ofonoManager;
     bool connmanAvailable;
-private slots:
-    void connmanAvailableChanged(bool);
-    void connmanUnregistered(const QString  &);
-    void initNetworkManager();
 
 };
 

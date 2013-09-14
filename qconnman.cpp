@@ -49,6 +49,7 @@ void QConnman::getInfo()
 
     qWarning() << "State" << connman->state();
     qWarning() << "available technologies" << connman->technologiesList();
+
 //    qWarning() << "enabled technologies" << connman->getEnabledTechnologies();
 //    qWarning() << "connected technologies" << connman->getConnectedTechnologies();
 

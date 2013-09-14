@@ -1,15 +1,9 @@
 /****************************************************************************
 **
-** Copyright (C) 2010 Lorn Potter.
+** Copyright (C) 2010-2013 Lorn Potter.
 ** All rights reserved.
 ** Contact: lorn.potter@gmail.com
 **
-** $QT_BEGIN_LICENSE:LGPL$
-** No Commercial Usage
-** This file contains pre-release code and may not be distributed.
-** You may use this file in accordance with the terms and conditions
-** contained in the Technology Preview License Agreement accompanying
-** this package.
 **
 ** GNU Lesser General Public License Usage
 ** Alternatively, this file may be used under the terms of the GNU Lesser
@@ -19,10 +13,6 @@
 ** ensure the GNU Lesser General Public License version 2.1 requirements
 ** will be met: http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html.
 **
-** In addition, as a special exception, Nokia gives you certain additional
-** rights.  These rights are described in the Nokia Qt LGPL Exception
-** version 1.1, included in the file LGPL_EXCEPTION.txt in this package.
-** $QT_END_LICENSE$
 **
 ****************************************************************************/
 
@@ -66,13 +56,27 @@ Window::Window() :
     connect(mw->networksTreeWidget,SIGNAL(customContextMenuRequested(QPoint)),this,SLOT(contextMenu(QPoint)));
     connect(mw->cellTreeWidget,SIGNAL(customContextMenuRequested(QPoint)),this,SLOT(contextMenu(QPoint)));
 
-    initNetworkManager();
+
+    watcher = new QDBusServiceWatcher("net.connman",QDBusConnection::systemBus(),
+                                      QDBusServiceWatcher::WatchForRegistration |
+                                      QDBusServiceWatcher::WatchForUnregistration, this);
+
+    connect(watcher, SIGNAL(serviceRegistered(QString)),
+            this, SLOT(connectToConnman(QString)));
+    connect(watcher, SIGNAL(serviceUnregistered(QString)),
+            this, SLOT(connmanUnregistered(QString)));
+
+    if (QDBusConnection::systemBus().interface()->isServiceRegistered("net.connman")) {
+        qDebug() << "connman service ok, connect";
+        initNetworkManager();
+    }
     createActions();
     createTrayIcon();
     connect(trayIcon, SIGNAL(messageClicked()), this, SLOT(messageClicked()));
     connect(trayIcon, SIGNAL(activated(QSystemTrayIcon::ActivationReason)),
             this, SLOT(iconActivated(QSystemTrayIcon::ActivationReason)));
 
+    this->setWindowTitle("QConnman the connection tray");
     QIcon icon = QIcon(":/images/tray.svg");
     trayIcon->setIcon(icon);
     trayIcon->show();
@@ -97,6 +101,14 @@ void Window::initNetworkManager()
 
     connect(connman,SIGNAL(stateChanged(const QString &)),
             this,SLOT(connmanStateChanged(const QString &)));
+
+    if (!ua)
+        ua = new UserAgent(this);
+
+    connect(ua,SIGNAL(userInputRequested(QString,QVariantMap)),
+            this,SLOT(userInputRequested(QString,QVariantMap)));
+    connect(ua,SIGNAL(userConnectRequested(QDBusMessage)),
+            this,SLOT(requestConnect(QDBusMessage)));
 }
 
 void Window::closeEvent(QCloseEvent *event)
@@ -111,14 +123,14 @@ void Window::iconActivated(QSystemTrayIcon::ActivationReason reason)
     qWarning() << __FUNCTION__ << reason;
     switch (reason) {
     case QSystemTrayIcon::Context:
-        {
-            appletContextMenu(QPoint(0,0));
-        }
+    {
+        appletContextMenu(QPoint(0,0));
+    }
         break;
     case QSystemTrayIcon::Trigger:
-        {
-            doTrigger();
-        }
+    {
+        doTrigger();
+    }
         break;
     case QSystemTrayIcon::DoubleClick:
         break;
@@ -128,7 +140,6 @@ void Window::iconActivated(QSystemTrayIcon::ActivationReason reason)
         ;
     }
 }
-
 
 void Window::messageClicked()
 {
@@ -175,18 +186,6 @@ void Window::subItemClicked(QTreeWidgetItem* /*item*/,int)
 
 }
 
-void Window::showWifi()
-{
-//    if(connman) {
-//       qWarning() << "State" << connman->state();
-//        qWarning() <<"available tech" << connman->getAvailableTechnologies()
-//                << "connected tech" << connman->getConnectedTechnologies()
-//                << "Services" << connman->getServices()
-//                << "default tech" << connman->getDefaultTechnology()
-//                ;
-//    }
-}
-
 void Window::menuTriggered(QAction *action)
 {
     QStringList menuText = action->text().split(" ");
@@ -195,12 +194,12 @@ void Window::menuTriggered(QAction *action)
     QString av = menuText.at(1);
     qDebug() << Q_FUNC_INFO;
     if(av == "available") {
- } else if(av == "enabled") {
+    } else if(av == "enabled") {
 
-//    QConnmanTechnologyInterface tech(connman->getPathForTechnology(menuText.at(0)));
-//    QConnmanDeviceInterface device(tech.getDevices().at(0));
-//     device.setEnabled(false);
- }
+        //    QConnmanTechnologyInterface tech(connman->getPathForTechnology(menuText.at(0)));
+        //    QConnmanDeviceInterface device(tech.getDevices().at(0));
+        //     device.setEnabled(false);
+    }
 }
 
 
@@ -210,13 +209,12 @@ void Window::doTrigger()
     if(this->isHidden()) {
         this->move(QPoint(QCursor::pos().x()-trayWidget->width(),QCursor::pos().y()+20));
         this->showNormal();
-     //   trayWidget->showNormal();
+        //   trayWidget->showNormal();
     } else {
         this->hide();
-     //   trayWidget->hide();
+        //   trayWidget->hide();
     }
 }
-
 
 void Window::updateTree()
 {
@@ -229,53 +227,47 @@ void Window::updateTree()
     for (int i = 0; i < techs.size(); ++i) {
         NetworkTechnology *tech = techs.at(i);
 
-        qDebug() << "Tech" << tech->name();
-//    }
-
         QStringList knownNetworkList;
         QStringList networkList;
 
         foreach(NetworkService* serv, connman->getServices(tech->type())) {
 
-//            NetworkService *serv;
-//            serv = new NetworkService(service,this);
+            knownNetworkList << serv->name();
+            QTreeWidgetItem *item;
+            QStringList columns;
+            QString num;
+            num.setNum(serv->strength());
 
-            qDebug() << "Service" << serv->name() << serv->type();
+            columns << (serv->name().isEmpty() ? "Hidden" : serv->name())
+                    << ((serv->state() =="ready")  ? "online": serv->state())
+                    << num
+                    << (serv->security().isEmpty() ? "none" : serv->security().join(", "))
+                    << serv->ipv4().value("Address").toString();
 
-                knownNetworkList << serv->name();
-                QTreeWidgetItem *item;
-                QStringList columns;
-                QString num;
-                num.setNum(serv->strength());
+            item = new QTreeWidgetItem(columns);
+            item->setData(0,Qt::UserRole,QVariant(serv->path()));
+            item->setData(1,Qt::UserRole,QVariant(serv->type()));
 
-                columns << serv->name()
-                        << ((serv->state() =="ready")  ? "online": serv->state())
-                        << num
-                        << serv->security()
-                        << serv->ipv4().value("Address").toString();
+            if (serv->state() == "online" && connman->defaultRoute()->name() == serv->name()) {
+                for (int i = 0; i < 5; i++) {
+                    item->setTextColor(i, QColor("red"));
+                    item->setBackground(i,*(new QBrush(Qt::lightGray,Qt::SolidPattern)));
+                }
+            }
+            connect(serv,SIGNAL(stateChanged(QString)),
+                    this,SLOT(serviceStateChanged(QString)));
 
-                item = new QTreeWidgetItem(columns);
-                item->setData(0,Qt::UserRole,QVariant(serv->path()));
-                item->setData(1,Qt::UserRole,QVariant(serv->type()));
+            connect(serv,SIGNAL(strengthChanged(uint)),
+                    this,SLOT(serviceStrengthChanged(uint)));
 
-//                if(!connmanServices.contains(serv))
-//                    connmanServices.append(serv);
+            connect(serv,SIGNAL(ipv4ConfigChanged(QVariantMap)),
+                    this,SLOT(servicesIpv4ConfigChanged(QVariantMap)));
 
-//                qDebug() << Q_FUNC_INFO << connmanServices.at(connmanServices.count() - 1)
-//                            << serv->state();
-
-//                connect(serv,SIGNAL(propertyChangedContext(QString,QString,QDBusVariant)),
-//                        this,SLOT(servicesPropertyChangedContext(QString,QString,QDBusVariant)));
-
-                mw->servicesTreeWidget->addTopLevelItem(item);
-                item->setExpanded(true);
+            mw->servicesTreeWidget->addTopLevelItem(item);
+            item->setExpanded(true);
 
 
             if(serv->type().contains("wifi")) {
-                // setup wifi networks tree
-
-//                if(!connmanNetworks.contains(serv))
-//                    connmanNetworks.append(serv);
 
                 networkList << serv->name();
                 QString num;
@@ -284,15 +276,7 @@ void Window::updateTree()
                 QString address;
                 QVariantMap map2 = serv->ipv4();
 
-                qWarning() << map2.count() << qdbus_cast<QVariantMap>(map2.value("IPv4"));
-                qWarning() << map2.value("Address").toString();
                 address = map2.value("Address").toString();
-
-                QMapIterator<QString,QVariant> it(map2);
-                while(it.hasNext()) {
-                    it.next();
-                    qWarning() << it.key() << it.value();
-                }
 
                 QString wifissid = serv->name();
                 if(wifissid.isEmpty()) {
@@ -303,7 +287,7 @@ void Window::updateTree()
                                               << wifissid
                                               << ((serv->state() =="ready")  ? "online": serv->state())
                                               << num
-                                              << serv->security()
+                                              << (serv->security().isEmpty() ? "none" : serv->security().join(", "))
                                               << address);
                 netItem->setData(0,Qt::UserRole,QVariant(serv->path()));
                 netItem->setData(1,Qt::UserRole,QVariant(serv->type()));
@@ -312,65 +296,65 @@ void Window::updateTree()
                 netItem->setExpanded(true);
             }
 
-        if(serv->type().contains("cellular")) {
+            if(serv->type().contains("cellular")) {
 
-            ofonoManager = new QOfonoManagerInterface(this);
-            connect(ofonoManager,SIGNAL(propertyChangedContext(QString,QString,QDBusVariant)),
-                    this,SLOT(ofonoPropertyChangedContext(QString,QString,QDBusVariant)));
-            qDebug() << Q_FUNC_INFO <<  ofonoManager->getModems().count();
-            Q_FOREACH(QDBusObjectPath path, ofonoManager->getModems()) {
-                //                initModem(path.path());
-                QOfonoModemInterface *modemIface;
-                modemIface = new QOfonoModemInterface(path.path(),this);
-                qDebug() << Q_FUNC_INFO << path.path();
+                ofonoManager = new QOfonoManagerInterface(this);
+                connect(ofonoManager,SIGNAL(propertyChangedContext(QString,QString,QDBusVariant)),
+                        this,SLOT(ofonoPropertyChangedContext(QString,QString,QDBusVariant)));
+                qDebug() << Q_FUNC_INFO <<  ofonoManager->getModems().count();
+                Q_FOREACH(QDBusObjectPath path, ofonoManager->getModems()) {
+                    //                initModem(path.path());
+                    QOfonoModemInterface *modemIface;
+                    modemIface = new QOfonoModemInterface(path.path(),this);
+                    qDebug() << Q_FUNC_INFO << path.path();
 
-                if(!knownModems.contains(path.path()))
-                    knownModems << path.path();
-                if(!modemIface->isPowered())
-                    continue;
-                connect(modemIface,SIGNAL(propertyChangedContext(QString,QString,QDBusVariant)),
-                        this,SLOT(ofonoModemPropertyChangedContext(QString,QString,QDBusVariant)));
+                    if(!knownModems.contains(path.path()))
+                        knownModems << path.path();
+                    if(!modemIface->isPowered())
+                        continue;
+                    connect(modemIface,SIGNAL(propertyChangedContext(QString,QString,QDBusVariant)),
+                            this,SLOT(ofonoModemPropertyChangedContext(QString,QString,QDBusVariant)));
 
-                QOfonoNetworkRegistrationInterface *ofonoNetworkInterface;
-                ofonoNetworkInterface = new QOfonoNetworkRegistrationInterface(path.path(),this);
-                connect(ofonoNetworkInterface,SIGNAL(propertyChangedContext(QString,QString,QDBusVariant)),
-                        this,SLOT(ofonoNetworkPropertyChangedContext(QString,QString,QDBusVariant)));
+                    QOfonoNetworkRegistrationInterface *ofonoNetworkInterface;
+                    ofonoNetworkInterface = new QOfonoNetworkRegistrationInterface(path.path(),this);
+                    connect(ofonoNetworkInterface,SIGNAL(propertyChangedContext(QString,QString,QDBusVariant)),
+                            this,SLOT(ofonoNetworkPropertyChangedContext(QString,QString,QDBusVariant)));
 
-                QTreeWidgetItem *netItem;
-                netItem = new QTreeWidgetItem(QStringList()
-                                              << ofonoNetworkInterface->getOperatorName()
-                                              << ofonoNetworkInterface->getStatus());
-                mw->cellTreeWidget->addTopLevelItem(netItem);
-                netItem->setExpanded(true);
-                netItem->setData(0,Qt::UserRole,QVariant(path.path()));
+                    QTreeWidgetItem *netItem;
+                    netItem = new QTreeWidgetItem(QStringList()
+                                                  << ofonoNetworkInterface->getOperatorName()
+                                                  << ofonoNetworkInterface->getStatus());
+                    mw->cellTreeWidget->addTopLevelItem(netItem);
+                    netItem->setExpanded(true);
+                    netItem->setData(0,Qt::UserRole,QVariant(path.path()));
 
 
-                // get any 3G connection types
-                QOfonoDataConnectionManagerInterface dc(path.path(),this);
-                foreach(const QDBusObjectPath dcPath,dc.getPrimaryContexts()) {
-                    QOfonoPrimaryDataContextInterface context(dcPath.path(),this);
-                    if(context.isValid() && !context.getName().isEmpty()) {
-                        netItem = new QTreeWidgetItem(QStringList()
-                                                      << context.getName()
-                                                      << (context.isActive() ? "Connected":"Not Connected")
-                                                      << context.getApName()
-                                                      << (dc.isPowered() ?"On":"Off"));
+                    // get any 3G connection types
+                    QOfonoDataConnectionManagerInterface dc(path.path(),this);
+                    foreach(const QDBusObjectPath dcPath,dc.getPrimaryContexts()) {
+                        QOfonoPrimaryDataContextInterface context(dcPath.path(),this);
+                        if(context.isValid() && !context.getName().isEmpty()) {
+                            netItem = new QTreeWidgetItem(QStringList()
+                                                          << context.getName()
+                                                          << (context.isActive() ? "Connected":"Not Connected")
+                                                          << context.getApName()
+                                                          << (dc.isPowered() ?"On":"Off"));
 
-                        mw->cellTreeWidget->addTopLevelItem(netItem);
-                        netItem->setExpanded(true);
-                        netItem->setData(0,Qt::UserRole,QVariant(dcPath.path()));
+                            mw->cellTreeWidget->addTopLevelItem(netItem);
+                            netItem->setExpanded(true);
+                            netItem->setData(0,Qt::UserRole,QVariant(dcPath.path()));
+                        }
+                        QOfonoMessageManagerInterface *smsIface;
+                        smsIface = new QOfonoMessageManagerInterface(path.path(), this);
+
+                        connect(smsIface,SIGNAL(immediateMessage(QString, QVariantMap)),
+                                this,SLOT(immediateMessage(QString,QVariantMap)));
+
+                        connect(smsIface,SIGNAL(incomingMessage(QString, QVariantMap)),
+                                this,SLOT(incomingMessage(QString,QVariantMap)));
                     }
-                    QOfonoMessageManagerInterface *smsIface;
-                    smsIface = new QOfonoMessageManagerInterface(path.path(), this);
-
-                    connect(smsIface,SIGNAL(immediateMessage(QString, QVariantMap)),
-                            this,SLOT(immediateMessage(QString,QVariantMap)));
-
-                    connect(smsIface,SIGNAL(incomingMessage(QString, QVariantMap)),
-                            this,SLOT(incomingMessage(QString,QVariantMap)));
                 }
             }
-        }
         }
     }
 }
@@ -378,104 +362,89 @@ void Window::updateTree()
 void Window::connmanStateChanged(const QString &state)
 {
     qWarning() << __FUNCTION__ << state;
+    this->setToolTip(connman->state());
 }
 
-
-void Window::servicesPropertyChanged(const QString &item, const QDBusVariant &value)
+void Window::serviceStrengthChanged(uint value)
 {
-    qWarning() << __FUNCTION__ << item << value.variant() << sender();
-    if(value.variant() == "failure") {
+    NetworkService *service = qobject_cast<NetworkService *>(sender());
+
+    QTreeWidgetItemIterator it( mw->servicesTreeWidget);
+    while (*it) {
+        if ((*it)->data(0,Qt::UserRole).toString() == service->path()) {
+            (*it)->setText(2, QString::number(value));
+            break;
+        }
+        ++it;
     }
-    if(item == "Strength") {
-     qWarning() << value.variant().toUInt();
+    QTreeWidgetItemIterator it2(mw->networksTreeWidget);
+    while (*it2) {
+        if ((*it2)->data(0,Qt::UserRole).toString() == service->path()) {
+            (*it2)->setText(2, QString::number(value));
+            break;
+        }
+        ++it2;
     }
-    if(item == "State")
-        this->setToolTip(connman->state());
 }
 
-void Window::servicesPropertyChangedContext(const QString & path, const QString &item, const QDBusVariant &value)
+void Window::servicesIpv4ConfigChanged(QVariantMap map)
 {
-  //  updateTree();
-   qWarning() << __FUNCTION__ << path << item << value.variant();
+    NetworkService *service = qobject_cast<NetworkService *>(sender());
 
-   if (item == "State") {
-//       NetworkService *serv;
-//       serv = new NetworkService(path,this);
+    QString address;
+    address = map.value("Address").toString();
 
-       QTreeWidgetItemIterator it( mw->servicesTreeWidget);
-       while (*it) {
-//           qDebug() << (*it)->data(0,Qt::UserRole).toString()
-//                       << path;
-           if ((*it)->data(0,Qt::UserRole).toString() == path)
-           {
-               QString state = value.variant().toString();
-               if (state == "ready" )
-                   state == "online";
-               (*it)->setText(1,state);
-               break;
-           }
-           ++it;
-       }
-       QTreeWidgetItemIterator it2(mw->networksTreeWidget);
-       while (*it2) {
-//           qDebug() << (*it2)->data(0,Qt::UserRole).toString()
-//                       << path;
-           if ((*it2)->data(0,Qt::UserRole).toString() == path)
-           {
-               QString state = value.variant().toString();
-               if (state == "ready" )
-                   state == "online";
-               (*it2)->setText(1,state);
-               break;
-           }
-           ++it2;
-       }
-
-   } else if (item == "Strength") {
-         qWarning() << value.variant().toUInt();
-//       NetworkService *serv;
-//       serv = new NetworkService(path,this);
-       QTreeWidgetItemIterator it( mw->servicesTreeWidget);
-       while (*it) {
-//           qDebug() << (*it)->data(0,Qt::UserRole).toString()
-//                       << path;
-           if ((*it)->data(0,Qt::UserRole).toString() == path) {
-               (*it)->setText(2, QString::number(value.variant().toUInt()));
-               break;
-           }
-           ++it;
-       }
-       QTreeWidgetItemIterator it2(mw->networksTreeWidget);
-       while (*it2) {
-//           qDebug() << (*it2)->data(0,Qt::UserRole).toString()
-//                       << path;
-           if ((*it2)->data(0,Qt::UserRole).toString() == path) {
-               (*it2)->setText(2, QString::number(value.variant().toUInt()));
-               break;
-           }
-           ++it2;
-       }
-   }
-
+    QTreeWidgetItemIterator it( mw->servicesTreeWidget);
+    while (*it) {
+        if ((*it)->data(0,Qt::UserRole).toString() == service->path()) {
+            (*it)->setText(4, address);
+            break;
+        }
+        ++it;
+    }
+    QTreeWidgetItemIterator it2(mw->networksTreeWidget);
+    while (*it2) {
+        if ((*it2)->data(0,Qt::UserRole).toString() == service->path()) {
+            (*it2)->setText(4, address);
+            break;
+        }
+        ++it2;
+    }
 }
 
-//void Window::technologyPropertyChanged(const QString &item, const QDBusVariant &value)
-//{
-// //   updateTree();
-//    qWarning() << __FUNCTION__ << item << value.variant();
-//}
+void Window::serviceStateChanged(const QString &state)
+{
+    NetworkService *service = qobject_cast<NetworkService *>(sender());
+
+    QTreeWidgetItemIterator it( mw->servicesTreeWidget);
+    while (*it) {
+        if ((*it)->data(0,Qt::UserRole).toString() == service->path()) {
+            if (state == "ready" )
+                state == "online";
+            (*it)->setText(1,state);
+            break;
+        }
+        ++it;
+    }
+    QTreeWidgetItemIterator it2(mw->networksTreeWidget);
+    while (*it2) {
+        if ((*it2)->data(0,Qt::UserRole).toString() == service->path()) {
+            if (state == "ready" )
+                state == "online";
+            (*it2)->setText(1,state);
+            break;
+        }
+        ++it2;
+    }
+}
+
 
 void Window::connectToService(const QString &service)
 {
-
     NetworkService *serv;
     serv = new NetworkService(this);
     serv->setPath(service);
-    qWarning() << Q_FUNC_INFO
-                  << service
-               << serv->name()
-               << serv->type()
-               << serv->strength();
+    connect(serv,SIGNAL(connectRequestFailed(QString)),this,SLOT(connectRequestFailed(QString)));
     serv->requestConnect();
 }
 
@@ -484,10 +453,10 @@ void Window::connectService()
     trayWidget->update();
 
     if(mw->tabWidget->currentIndex() == 0
-        && mw->servicesTreeWidget->currentItem() != NULL) {
+            && mw->servicesTreeWidget->currentItem() != NULL) {
         connectToService(mw->servicesTreeWidget->currentItem()->data(0,Qt::UserRole).toString());
     } else if(mw->tabWidget->currentIndex() == 1
-               && mw->networksTreeWidget->currentItem() != NULL) {
+              && mw->networksTreeWidget->currentItem() != NULL) {
         connectToService(mw->networksTreeWidget->currentItem()->data(0,Qt::UserRole).toString());
     }
     trayWidget->update();
@@ -496,8 +465,9 @@ void Window::connectService()
 void Window::disconnectService()
 {
     QString serviceStr;
+
     if(mw->tabWidget->currentIndex() == 0
-       && mw->servicesTreeWidget->currentItem() != NULL) {
+            && mw->servicesTreeWidget->currentItem() != NULL) {
         serviceStr = mw->servicesTreeWidget->currentItem()->data(0,Qt::UserRole).toString();
     } else if(mw->tabWidget->currentIndex() == 1
               && mw->networksTreeWidget->currentItem() != NULL){
@@ -505,7 +475,9 @@ void Window::disconnectService()
     }
     NetworkService serv(this);
     serv.setPath(serviceStr);
-    serv.disconnect();
+    qDebug() << Q_FUNC_INFO << serv.name();
+
+    serv.requestDisconnect();
 }
 
 void Window::removeService()
@@ -519,9 +491,16 @@ void Window::removeService()
 
 void Window::scan()
 {
-    qWarning() << __FUNCTION__;
-     NetworkTechnology* technology = connman->getTechnology("wifi");
-     technology->scan();
+    NetworkTechnology* technology = connman->getTechnology("wifi");
+    technology->scan();
+}
+
+void Window::doAutoConnect()
+{
+    QString serviceStr = mw->servicesTreeWidget->currentItem()->data(0,Qt::UserRole).toString();
+    NetworkService serv(this);
+    serv.setPath(serviceStr);
+    serv.setAutoConnect(true);
 }
 
 
@@ -553,6 +532,10 @@ void Window::contextMenu(const QPoint &point)
         action = new QAction("Scan",this);
         connect(action,SIGNAL(triggered()),this,SLOT(scan()));
         menu.addAction(action);
+
+        action = new QAction("Autoconnect", this);
+        connect(action,SIGNAL(triggered()),this,SLOT(doAutoConnect()));
+        menu.addAction(action);
     }
 
     menu.exec(mw->servicesTreeWidget->mapToGlobal(point));
@@ -560,62 +543,58 @@ void Window::contextMenu(const QPoint &point)
 
 void  Window::appletContextMenu(const QPoint &/*point*/)
 {
-//    ConnmanCloud *conncloud;
-//    conncloud = new ConnmanCloud(this);
-//    CloudView view(conncloud);
-//    view.show();
-
     QMenu menu;
     QAction *action;
+    if (connman) {
+        foreach(NetworkTechnology *tech,connman->getTechnologies()) {
 
-    foreach(NetworkTechnology *tech,connman->getTechnologies()) {
+            bool on = false;
+            qDebug() <<Q_FUNC_INFO << tech->powered();
+            if(tech->powered()) {
+                on = true;
+            }
+            QString textItem = tech->type() +": "+tech->powered();
 
-        bool on = false;
-        qDebug() <<Q_FUNC_INFO << tech->powered();
-        if(tech->powered()) {
-            on = true;
-        }
-        QString textItem = tech->name() +": "+tech->powered();
+            action = new QAction(textItem,this);
+            action->setDisabled(true);
+            menu.addAction(action);
 
-        action = new QAction(textItem,this);
-        action->setDisabled(true);
-        menu.addAction(action);
+            if(on) {
+                action = new QAction(QString("Disable "+tech->type()),this);
+            } else {
+                action = new QAction(QString("Enable "+tech->type()),this);
+            }
+            connect(action,SIGNAL(triggered()),this,SLOT(deviceContextMenuClicked()));
+            menu.addAction(action);
+            menu.addSeparator();
 
-        if(on) {
-            action = new QAction(QString("Disable "+tech->name()),this);
-        } else {
-            action = new QAction(QString("Enable "+tech->name()),this);
-        }
-        connect(action,SIGNAL(triggered()),this,SLOT(deviceContextMenuClicked()));
-        menu.addAction(action);
-        menu.addSeparator();
+            if(tech->type().contains("cellular")) {
+                Q_FOREACH(QDBusObjectPath path, ofonoManager->getModems()) {
+                    if(!path.path().isEmpty() || !path.path().isNull()) {
+                        QOfonoModemInterface modemIface(path.path(),this);
+                        if(!modemIface.isValid()) {
+                            continue;
+                        }
+                        qDebug() << modemIface.getName() << modemIface.isPowered();
+                        QString str = modemIface.getName();
+                        if(str.isEmpty()) {
+                            str = modemIface.getManufacturer() +" "+modemIface.getModel();
+                        }
+                        QString textItem = str +": "+(modemIface.isPowered() ? "On":"Off");
 
-        if(tech->type().contains("cellular")) {
-            Q_FOREACH(QDBusObjectPath path, ofonoManager->getModems()) {
-                if(!path.path().isEmpty() || !path.path().isNull()) {
-                    QOfonoModemInterface modemIface(path.path(),this);
-                    if(!modemIface.isValid()) {
-                        continue;
+                        action = new QAction(textItem,this);
+                        action->setDisabled(true);
+                        menu.addAction(action);
+
+                        if(modemIface.isPowered()) {
+                            action = new QAction(QString("Disable "+str),this);
+                        } else {
+                            action = new QAction(QString("Enable "+str),this);
+                        }
+                        connect(action,SIGNAL(triggered()),this,SLOT(deviceContextMenuClicked()));
+                        menu.addAction(action);
+                        menu.addSeparator();
                     }
-                    qDebug() << modemIface.getName() << modemIface.isPowered();
-                    QString str = modemIface.getName();
-                    if(str.isEmpty()) {
-                        str = modemIface.getManufacturer() +" "+modemIface.getModel();
-                    }
-                    QString textItem = str +": "+(modemIface.isPowered() ? "On":"Off");
-
-                    action = new QAction(textItem,this);
-                    action->setDisabled(true);
-                    menu.addAction(action);
-
-                    if(modemIface.isPowered()) {
-                        action = new QAction(QString("Disable "+str),this);
-                    } else {
-                        action = new QAction(QString("Enable "+str),this);
-                    }
-                    connect(action,SIGNAL(triggered()),this,SLOT(deviceContextMenuClicked()));
-                    menu.addAction(action);
-                    menu.addSeparator();
                 }
             }
         }
@@ -679,20 +658,23 @@ void Window::deviceContextMenuClicked()
 
     if(action->text().contains("Disable")) {
         // disable tech
-        qWarning() << action->text().split(" ").at(1);
     } else {
         doEnable = true;
         // enable tech
-        qWarning() << action->text().split(" ").at(1);
     }
 
     foreach(NetworkTechnology *technology,connman->getTechnologies()) {
 
-        if(action->text().split(" ").at(1) == technology->name()) {
+        if(action->text().contains(technology->type())) {
 
-            qDebug() <<Q_FUNC_INFO <<  technology->name();
+            qDebug() <<Q_FUNC_INFO << technology->type() << doEnable << "powered" << technology->powered();
 
             technology->setPowered(doEnable);
+            if (doEnable)
+                technology->scan();
+
+            qDebug() <<Q_FUNC_INFO << technology->type() << "powered" << technology->powered();
+            updateTree();
         }
     }
 }
@@ -732,10 +714,10 @@ void Window::incomingMessage(const QString& msg,const QVariantMap &map)
             this,SLOT(sendMessage(QString)));
 
     newmessagebox->exec();
-//    qDebug() << result;
-//    if(result != 0) {
+    //    qDebug() << result;
+    //    if(result != 0) {
 
-//    }
+    //    }
     delete newmessagebox;
 
 }
@@ -769,7 +751,7 @@ void Window::sendMessage(const QString &address)
     delete wid;
 }
 
-void Window::userInputRequested(const QString &servicePath, const QVariantList &fields)
+void Window::userInputRequested(const QString &servicePath, const QVariantMap &fields)
 {
     qDebug() << Q_FUNC_INFO << servicePath << fields;
     NetworkService *serv;
@@ -801,8 +783,9 @@ void Window::userInputRequested(const QString &servicePath, const QVariantList &
     delete wid;
 }
 
-void Window::requestConnect(const QDBusMessage &msg)
+void Window::requestConnect(const QDBusMessage &/*msg*/)
 {
+    qDebug() << Q_FUNC_INFO;
     QMessageBox msgBox;
     msgBox.setText("Connection Request.");
     msgBox.setInformativeText("Do you want to connect to the internet?");
@@ -810,7 +793,7 @@ void Window::requestConnect(const QDBusMessage &msg)
     msgBox.setDefaultButton(QMessageBox::Yes);
     int ret = msgBox.exec();
     if (ret == QMessageBox::Yes) {
-  //      sessionAgent->requestConnect(); //connect to this session
+        //      sessionAgent->requestConnect(); //connect to this session
         ua->sendConnectReply(QLatin1String("Clear"), 0);
     } else {
         ua->sendConnectReply(QLatin1String("Supress"), 15);
@@ -821,36 +804,44 @@ void Window::connmanAvailableChanged(bool b)
 {
     qDebug() << Q_FUNC_INFO << b;
     if (b) {
-        if (!ua)
-            ua = new UserAgent(this);
-
-        connect(ua,SIGNAL(userInputRequested(QString,QVariantList)),
-                this,SLOT(userInputRequested(QString,QVariantList)));
-        connect(ua,SIGNAL(userConnectRequested(QDBusMessage)),
-                this,SLOT(requestConnect(QDBusMessage)));
         this->setToolTip(connman->state());
         updateTree();
     }
 }
 
-void Window::connmanUnregistered(const QString &something)
+void Window::connmanUnregistered(const QString &/*something*/)
 {
     disconnect(connman,SIGNAL(propertyChangedContext(QString,QString,QDBusVariant)),
-            this,SLOT(connmanPropertyChangedContext(QString,QString,QDBusVariant)));
+               this,SLOT(connmanPropertyChangedContext(QString,QString,QDBusVariant)));
 
     disconnect(connman,SIGNAL(stateChanged(const QString &)),
-            this,SLOT(connmanStateChanged(const QString &)));
+               this,SLOT(connmanStateChanged(const QString &)));
 
     disconnect(ua,SIGNAL(userInputRequested(QString,QVariantList)),
-            this,SLOT(userInputRequested(QString,QVariantList)));
+               this,SLOT(userInputRequested(QString,QVariantList)));
     disconnect(ua,SIGNAL(userConnectRequested(QDBusMessage)),
-            this,SLOT(requestConnect(QDBusMessage)));
+               this,SLOT(requestConnect(QDBusMessage)));
 }
 
 void Window::techChanged()
 {
+    updateTree();
+    qDebug() << Q_FUNC_INFO;
 }
 
 void Window::servicesChanged()
 {
+    qDebug() << Q_FUNC_INFO;
+    updateTree();
+}
+
+void Window::connectRequestFailed(const QString &error)
+{
+    trayIcon->showMessage("QConnman connection error", error/*, QSystemTrayIcon::Information, 4000*/);
+}
+
+void Window::connectToConnman(QString)
+{
+    initNetworkManager();
+    updateTree();
 }
