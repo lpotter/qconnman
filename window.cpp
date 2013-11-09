@@ -77,7 +77,8 @@ Window::Window() :
             this, SLOT(iconActivated(QSystemTrayIcon::ActivationReason)));
 
     this->setWindowTitle("QConnman the connection tray");
-    QIcon icon = QIcon(":/images/tray.svg");
+    QIcon icon = QIcon(":/images/preferences-system-network-2.svg");
+//    QIcon icon = QIcon(":/images/tray.svg");
     trayIcon->setIcon(icon);
     trayIcon->show();
 }
@@ -242,7 +243,9 @@ void Window::updateTree()
                     << ((serv->state() =="ready")  ? "online": serv->state())
                     << num
                     << (serv->security().isEmpty() ? "none" : serv->security().join(", "))
-                    << serv->ipv4().value("Address").toString();
+                    << serv->ipv4().value("Address").toString()
+                    << serv->ethernet().value("Interface").toString()
+                       << serv->ethernet().value("Address").toString();
 
             item = new QTreeWidgetItem(columns);
             item->setData(0,Qt::UserRole,QVariant(serv->path()));
@@ -363,6 +366,17 @@ void Window::connmanStateChanged(const QString &state)
 {
     qWarning() << __FUNCTION__ << state;
     this->setToolTip(connman->state());
+    if (state == "idle") {
+        QIcon icon = QIcon(":/images/tray.svg");
+        trayIcon->setIcon(icon);
+     //  trayIcon->icon().
+        trayIcon->show();
+    }
+    if (state == "online") {
+        QIcon icon = QIcon(":/images/preferences-system-network-2.svg");
+        trayIcon->setIcon(icon);
+        trayIcon->show();
+    }
 }
 
 void Window::serviceStrengthChanged(uint value)
