@@ -781,15 +781,15 @@ void Window::userInputRequested(const QString &servicePath, const QVariantMap &f
     if(result == QDialog::Accepted) {
         map.insert("Passphrase",wiz->passphraseLineEdit->text());
         qWarning() << wiz->passphraseLineEdit->text();
-    }
 
-    map.insert("Type", serv->type());
-    if(serv->type() == "wifi") {
-        map.insert("Mode", "managed");
-        map.insert("SSID", serv->name());
-        map.insert("Security", serv->security());
-        //                map.insert("IPv4.Configuration", "Method=dhcp");
-        //                        map.insert("IPv4", "Method=dhcp");
+        map.insert("Type", serv->type());
+        if(serv->type() == "wifi") {
+            map.insert("Mode", "managed");
+            map.insert("SSID", serv->name());
+            map.insert("Security", serv->security());
+            //                map.insert("IPv4.Configuration", "Method=dhcp");
+            //                        map.insert("IPv4", "Method=dhcp");
+        }
     }
 
     ua->sendUserReply(map);
