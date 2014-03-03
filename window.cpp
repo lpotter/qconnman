@@ -77,10 +77,11 @@ Window::Window() :
             this, SLOT(iconActivated(QSystemTrayIcon::ActivationReason)));
 
     this->setWindowTitle("QConnman the connection tray");
-    QIcon icon = QIcon(":/images/preferences-system-network-2.svg");
-//    QIcon icon = QIcon(":/images/tray.svg");
+//    QIcon icon = QIcon(":/images/preferences-system-network-2.svg");
+    QIcon icon = QIcon(":/images/tray.svg");
     trayIcon->setIcon(icon);
     trayIcon->show();
+
 }
 
 
@@ -110,6 +111,7 @@ void Window::initNetworkManager()
             this,SLOT(userInputRequested(QString,QVariantMap)));
     connect(ua,SIGNAL(userConnectRequested(QDBusMessage)),
             this,SLOT(requestConnect(QDBusMessage)));
+    connmanAvailable = connman->isAvailable();
 }
 
 void Window::closeEvent(QCloseEvent *event)
@@ -240,7 +242,7 @@ void Window::updateTree()
             num.setNum(serv->strength());
 
             columns << (serv->name().isEmpty() ? "Hidden" : serv->name())
-                    << ((serv->state() =="ready")  ? "online": serv->state())
+                    << serv->state()
                     << num
                     << (serv->security().isEmpty() ? "none" : serv->security().join(", "))
                     << serv->ipv4().value("Address").toString()
@@ -372,7 +374,7 @@ void Window::connmanStateChanged(const QString &state)
      //  trayIcon->icon().
         trayIcon->show();
     }
-    if (state == "online") {
+    if (state == "online"  || state == "ready") {
         QIcon icon = QIcon(":/images/preferences-system-network-2.svg");
         trayIcon->setIcon(icon);
         trayIcon->show();
@@ -455,6 +457,9 @@ void Window::serviceStateChanged(const QString &state)
 
 void Window::connectToService(const QString &service)
 {
+    qDebug() << connmanAvailable;
+    if (!connmanAvailable)
+        return;
     NetworkService *serv;
     serv = new NetworkService(this);
     serv->setPath(service);
@@ -464,6 +469,8 @@ void Window::connectToService(const QString &service)
 
 void Window::connectService()
 {
+    if (!connmanAvailable)
+        return;
     trayWidget->update();
 
     if(mw->tabWidget->currentIndex() == 0
@@ -478,6 +485,8 @@ void Window::connectService()
 
 void Window::disconnectService()
 {
+    if (!connmanAvailable)
+        return;
     QString serviceStr;
 
     if(mw->tabWidget->currentIndex() == 0
@@ -496,6 +505,8 @@ void Window::disconnectService()
 
 void Window::removeService()
 {
+    if (!connmanAvailable)
+        return;
     QString serviceStr = mw->servicesTreeWidget->currentItem()->data(0,Qt::UserRole).toString();
     NetworkService serv(this);
     serv.setPath(serviceStr);
@@ -505,12 +516,16 @@ void Window::removeService()
 
 void Window::scan()
 {
+    if (!connmanAvailable)
+        return;
     NetworkTechnology* technology = connman->getTechnology("wifi");
     technology->scan();
 }
 
 void Window::doAutoConnect()
 {
+    if (!connmanAvailable)
+        return;
     QString serviceStr = mw->servicesTreeWidget->currentItem()->data(0,Qt::UserRole).toString();
     NetworkService serv(this);
     serv.setPath(serviceStr);
@@ -817,6 +832,7 @@ void Window::requestConnect(const QDBusMessage &/*msg*/)
 void Window::connmanAvailableChanged(bool b)
 {
     qDebug() << Q_FUNC_INFO << b;
+    connmanAvailable = b;
     if (b) {
         this->setToolTip(connman->state());
         updateTree();
@@ -825,14 +841,14 @@ void Window::connmanAvailableChanged(bool b)
 
 void Window::connmanUnregistered(const QString &/*something*/)
 {
-    disconnect(connman,SIGNAL(propertyChangedContext(QString,QString,QDBusVariant)),
-               this,SLOT(connmanPropertyChangedContext(QString,QString,QDBusVariant)));
+    connmanAvailable = false;
 
     disconnect(connman,SIGNAL(stateChanged(const QString &)),
                this,SLOT(connmanStateChanged(const QString &)));
 
     disconnect(ua,SIGNAL(userInputRequested(QString,QVariantList)),
                this,SLOT(userInputRequested(QString,QVariantList)));
+
     disconnect(ua,SIGNAL(userConnectRequested(QDBusMessage)),
                this,SLOT(requestConnect(QDBusMessage)));
 }
@@ -856,6 +872,7 @@ void Window::connectRequestFailed(const QString &error)
 
 void Window::connectToConnman(QString)
 {
+    connmanAvailable = true;
     initNetworkManager();
     updateTree();
 }
