@@ -242,7 +242,7 @@ void Window::updateTree()
             num.setNum(serv->strength());
 
             columns << (serv->name().isEmpty() ? "Hidden" : serv->name())
-                    << serv->state()
+                    << serv->state() + (serv->autoConnect() ? "\tA": "")
                     << num
                     << (serv->security().isEmpty() ? "none" : serv->security().join(", "))
                     << serv->ipv4().value("Address").toString()
@@ -287,10 +287,12 @@ void Window::updateTree()
                 if(wifissid.isEmpty()) {
                     wifissid = "Hidden Network";
                 }
+                QString state = (serv->state() =="ready")  ? "online": serv->state();
+                state.append(serv->autoConnect() ? "\tA": "");
 
                 netItem = new QTreeWidgetItem(QStringList()
                                               << wifissid
-                                              << ((serv->state() =="ready")  ? "online": serv->state())
+                                              << state
                                               << num
                                               << (serv->security().isEmpty() ? "none" : serv->security().join(", "))
                                               << address);
@@ -507,10 +509,19 @@ void Window::removeService()
 {
     if (!connmanAvailable)
         return;
-    QString serviceStr = mw->servicesTreeWidget->currentItem()->data(0,Qt::UserRole).toString();
+    QString serviceStr;
+    if ( mw->tabWidget->currentIndex() == 0)
+        serviceStr = mw->servicesTreeWidget->currentItem()->data(0,Qt::UserRole).toString();
+    else if ( mw->tabWidget->currentIndex() == 1)
+        serviceStr = mw->networksTreeWidget->currentItem()->data(0,Qt::UserRole).toString();
+    else
+        return;
+    if (serviceStr.isEmpty())
+        return;
     NetworkService serv(this);
     serv.setPath(serviceStr);
-    serv.remove();
+    if (serv.favorite())
+        serv.remove();
     updateTree();
 }
 
@@ -526,10 +537,25 @@ void Window::doAutoConnect()
 {
     if (!connmanAvailable)
         return;
-    QString serviceStr = mw->servicesTreeWidget->currentItem()->data(0,Qt::UserRole).toString();
+    QString serviceStr;
+
+    if ( mw->tabWidget->currentIndex() == 0)
+        serviceStr = mw->servicesTreeWidget->currentItem()->data(0,Qt::UserRole).toString();
+    else if ( mw->tabWidget->currentIndex() == 1)
+        serviceStr = mw->networksTreeWidget->currentItem()->data(0,Qt::UserRole).toString();
+    else
+        return;
+
+    if (serviceStr.isEmpty())
+        return;
+
     NetworkService serv(this);
     serv.setPath(serviceStr);
-    serv.setAutoConnect(true);
+    if (!serv.autoConnect())
+        serv.setAutoConnect(true);
+    else
+        serv.setAutoConnect(false);
+
 }
 
 
