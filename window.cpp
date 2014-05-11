@@ -18,7 +18,6 @@
 
 
 #include <QtWidgets/QDesktopWidget>
-#include <QMessageBox>
 #include <QtGui>
 #include <QMenu>
 #include <QTreeWidgetItem>
@@ -32,10 +31,12 @@
 #include "ui_wizard.h"
 #include "ui_sendSmsDialog.h"
 #include "newmessage.h"
+#include "messagebox.h"
 
 static const char AGENT_PATH[] = "/ConnmanAgent";
 
 Window::Window() :
+    msgBox(0),
     connman(0)
   , ua(0)
   , watcher(0),
@@ -840,13 +841,19 @@ void Window::userInputRequested(const QString &servicePath, const QVariantMap &f
 
 void Window::requestConnect(const QDBusMessage &/*msg*/)
 {
+    ua->sendConnectReply("Supress", 15);
+    if (!msgBox) {
+        msgBox = new MessageBox(this);
+        msgBox->setText("Connection Request.");
+        msgBox->setInformativeText("Do you want to connect to the internet?");
+        msgBox->setStandardButtons(QMessageBox::Yes |  QMessageBox::Cancel);
+        msgBox->setDefaultButton(QMessageBox::Yes);
+        msgBox->setAutoClose(true);
+        msgBox->setTimeout(60); //Closes after 60 seconds
+    }
     qDebug() << Q_FUNC_INFO;
-    QMessageBox msgBox;
-    msgBox.setText("Connection Request.");
-    msgBox.setInformativeText("Do you want to connect to the internet?");
-    msgBox.setStandardButtons(QMessageBox::Yes |  QMessageBox::Cancel);
-    msgBox.setDefaultButton(QMessageBox::Yes);
-    int ret = msgBox.exec();
+
+    int ret = msgBox->exec();
     if (ret == QMessageBox::Yes) {
         //      sessionAgent->requestConnect(); //connect to this session
         ua->sendConnectReply(QLatin1String("Clear"), 0);

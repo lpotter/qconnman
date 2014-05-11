@@ -14,14 +14,16 @@ SOURCES += main.cpp \
     qconnman.cpp \
     window.cpp \
     newmessage.cpp \
-    qsysteminfodbushelper.cpp
+    qsysteminfodbushelper.cpp \
+    messagebox.cpp
 
 HEADERS += \
     qofonoservice_linux_p.h \
     qconnman.h \
     window.h \
     newmessage.h \
-    qsysteminfodbushelper_p.h
+    qsysteminfodbushelper_p.h \
+    messagebox.h
 
 RESOURCES = systray.qrc
 QT += xml svg

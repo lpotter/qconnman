@@ -41,6 +41,7 @@ class QAction;
 class QLabel;
 class QMenu;
 QT_END_NAMESPACE
+class MessageBox;
 
 class QMenu;
 class Window : public QDialog/*QSystemTrayIcon*/
@@ -108,6 +109,8 @@ private slots:
     void connectToConnman(QString = "");
 
 private:
+    MessageBox *msgBox;
+
     QSystemTrayIcon *trayIcon;
     void createActions();
     void createTrayIcon();
