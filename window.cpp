@@ -78,11 +78,11 @@ Window::Window() :
             this, SLOT(iconActivated(QSystemTrayIcon::ActivationReason)));
 
     this->setWindowTitle("QConnman the connection tray");
-//    QIcon icon = QIcon(":/images/preferences-system-network-2.svg");
-    QIcon icon = QIcon(":/images/tray.svg");
-    trayIcon->setIcon(icon);
-    trayIcon->show();
 
+    if (connmanAvailable)
+        connmanStateChanged(connman->state());
+    else
+        connmanStateChanged("idle");
 }
 
 
@@ -374,7 +374,6 @@ void Window::connmanStateChanged(const QString &state)
     if (state == "idle") {
         QIcon icon = QIcon(":/images/tray.svg");
         trayIcon->setIcon(icon);
-     //  trayIcon->icon().
         trayIcon->show();
     }
     if (state == "online"  || state == "ready") {
@@ -855,10 +854,12 @@ void Window::requestConnect(const QDBusMessage &/*msg*/)
 
     int ret = msgBox->exec();
     if (ret == QMessageBox::Yes) {
+        trayIcon->show();
+
         //      sessionAgent->requestConnect(); //connect to this session
-        ua->sendConnectReply(QLatin1String("Clear"), 0);
-    } else {
-        ua->sendConnectReply(QLatin1String("Supress"), 15);
+//        ua->sendConnectReply(QLatin1String("Clear"), 0);
+ //    } else {
+//        ua->sendConnectReply(QLatin1String("Supress"), 15);
     }
 }
 
